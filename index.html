@@ -243,6 +243,16 @@
   .dnd-btns{display:flex;gap:3px;flex:none}
   .dnd-btns button{width:24px;height:24px;border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;cursor:pointer;font-size:11px;color:var(--ink-soft);padding:0}
   .dnd-rm{color:var(--warn)!important}
+  .phase-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .phase-lab{flex:0 0 38px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+  .phase-row input[type=date]{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;font-size:12.5px;font-family:inherit}
+  .phase-tilde{color:var(--muted)}
+  .phase-days{flex:0 0 52px;text-align:right;font-family:var(--fm);font-size:11.5px;color:var(--primary);font-weight:700}
+  .phase-view{border:1px solid var(--line);border-radius:9px;background:var(--surface-2);padding:8px 10px;margin-bottom:8px}
+  .phase-vrow{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0}
+  .phase-vlab{flex:0 0 34px;font-weight:700;color:var(--ink-soft)}
+  .phase-vdate{flex:1;font-family:var(--fm);color:var(--ink-soft)}
+  .phase-vdays{font-family:var(--fm);font-weight:700;color:var(--primary)}
   .alist .prev-name{margin-top:6px}
   .brep-list{display:flex;flex-direction:column;gap:10px}
   .brep-row{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:8px}
@@ -448,6 +458,7 @@ const publicUrl=path=>`${SUPA.url}/storage/v1/object/public/${BUCKET}/${path}`;
 let ASSET_THUMB_OK=false;   // thumb_path 컬럼 존재 시 true (loadAll에서 감지)
 let ASSET_PAGES_OK=false;   // pages 컬럼 존재 시 true (카드뉴스 묶음)
 let ASSET_SORT_OK=false;    // sort_no 컬럼 존재 시 true (산출물 순서)
+let ASSET_PHASES_OK=false;  // phases 컬럼 존재 시 true (영상 단계 기간)
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_EXT_OK=false;   // 회의명(title)+회의댓글 확장 적용 시 true
@@ -462,8 +473,8 @@ const Maps={
     to:c=>({id:c.id,name:c.name,goal:c.goal||null,kpi:c.kpi||null})},
   task:{from:r=>({id:r.id,title:r.title,purpose:r.purpose,brandId:r.brand_id,campaignId:r.campaign_id,ownerId:r.owner_id,priority:r.priority,start:r.start_date?Date.parse(r.start_date):null,due:r.due?Date.parse(r.due):Date.now(),status:r.status,kpis:r.kpis||[],execReport:r.exec_report,createdAt:Date.parse(r.created_at),updatedAt:Date.parse(r.updated_at)}),
     to:t=>({id:t.id,title:t.title,purpose:t.purpose,brand_id:t.brandId,campaign_id:t.campaignId||null,owner_id:t.ownerId,priority:t.priority,start_date:t.start?iso(t.start):null,due:iso(t.due),status:t.status,kpis:t.kpis,exec_report:t.execReport,created_at:iso(t.createdAt),updated_at:iso(t.updatedAt)})},
-  asset:{from:r=>({id:r.id,taskId:r.task_id,type:r.type,authorId:r.author_id,ver:r.ver,link:r.link,filePath:r.file_path,fileName:r.file_name,fileMime:r.file_mime,fileData:r.file_path?publicUrl(r.file_path):null,thumbPath:r.thumb_path||null,thumbData:r.thumb_path?publicUrl(r.thumb_path):null,pages:Array.isArray(r.pages)?r.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null,fileData:p.filePath?publicUrl(p.filePath):null,thumbData:p.thumbPath?publicUrl(p.thumbPath):null})):null,sortNo:(r.sort_no==null?null:r.sort_no),note:r.note,keywords:r.keywords,body:r.body||"",checks:r.checks,createdAt:Date.parse(r.created_at)}),
-    to:a=>{const o={id:a.id,task_id:a.taskId,type:a.type,author_id:a.authorId,ver:a.ver,link:a.link||null,file_path:a.filePath||null,file_name:a.fileName||null,file_mime:a.fileMime||null,note:a.note,keywords:a.keywords,checks:a.checks,created_at:iso(a.createdAt)}; if(a.body) o.body=a.body; if(a.thumbPath) o.thumb_path=a.thumbPath; if(a.pages&&a.pages.length) o.pages=a.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null})); if(a.sortNo!=null) o.sort_no=a.sortNo; return o;}},
+  asset:{from:r=>({id:r.id,taskId:r.task_id,type:r.type,authorId:r.author_id,ver:r.ver,link:r.link,filePath:r.file_path,fileName:r.file_name,fileMime:r.file_mime,fileData:r.file_path?publicUrl(r.file_path):null,thumbPath:r.thumb_path||null,thumbData:r.thumb_path?publicUrl(r.thumb_path):null,pages:Array.isArray(r.pages)?r.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null,fileData:p.filePath?publicUrl(p.filePath):null,thumbData:p.thumbPath?publicUrl(p.thumbPath):null})):null,sortNo:(r.sort_no==null?null:r.sort_no),phases:(r.phases&&typeof r.phases==="object")?r.phases:null,note:r.note,keywords:r.keywords,body:r.body||"",checks:r.checks,createdAt:Date.parse(r.created_at)}),
+    to:a=>{const o={id:a.id,task_id:a.taskId,type:a.type,author_id:a.authorId,ver:a.ver,link:a.link||null,file_path:a.filePath||null,file_name:a.fileName||null,file_mime:a.fileMime||null,note:a.note,keywords:a.keywords,checks:a.checks,created_at:iso(a.createdAt)}; if(a.body) o.body=a.body; if(a.thumbPath) o.thumb_path=a.thumbPath; if(a.pages&&a.pages.length) o.pages=a.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null})); if(a.sortNo!=null) o.sort_no=a.sortNo; if(a.phases&&Object.keys(a.phases).length) o.phases=a.phases; return o;}},
   version:{from:r=>({id:r.id,assetId:r.asset_id,no:r.no,changes:r.changes,reason:r.reason,editorId:r.editor_id,createdAt:Date.parse(r.created_at)}),
     to:v=>({id:v.id,asset_id:v.assetId,no:v.no,changes:v.changes,reason:v.reason,editor_id:v.editorId,created_at:iso(v.createdAt)})},
   review:{from:r=>({id:r.id,taskId:r.task_id,reviewerId:r.reviewer_id,role:r.role,decision:r.decision,checklist:r.checklist,cat:r.cat,detail:r.detail,comment:r.comment,createdAt:Date.parse(r.created_at)}),
@@ -536,6 +547,7 @@ const Store = (()=>{
     try{ const {error}=await sb.from("assets").select("thumb_path").limit(1); ASSET_THUMB_OK=!error; }catch(e){ ASSET_THUMB_OK=false; }
     try{ const {error}=await sb.from("assets").select("pages").limit(1); ASSET_PAGES_OK=!error; }catch(e){ ASSET_PAGES_OK=false; }
     try{ const {error}=await sb.from("assets").select("sort_no").limit(1); ASSET_SORT_OK=!error; }catch(e){ ASSET_SORT_OK=false; }
+    try{ const {error}=await sb.from("assets").select("phases").limit(1); ASSET_PHASES_OK=!error; }catch(e){ ASSET_PHASES_OK=false; }
     db.versions=await get("versions",Maps.version.from);
     db.reviews=await get("reviews",Maps.review.from);
     db.performance=await get("performance",Maps.perf.from);
@@ -1356,6 +1368,7 @@ function assetCard(a){
         ${canEdit?`<button class="btn btn-ghost btn-sm" data-act="del-asset" data-id="${a.id}">삭제</button>`:""}
       </div></div>
     <div style="margin:10px 0">${C.preview(a)}</div>
+    ${a.type==="video"&&a.phases&&Object.keys(a.phases).length?`<div class="phase-view">${PHASE_DEFS.map(([k,lab])=>{const p=(a.phases||{})[k]; if(!p||(!p.s&&!p.e))return ""; const d=phaseDays(p.s,p.e); return `<div class="phase-vrow"><span class="phase-vlab">${lab}</span><span class="phase-vdate">${mdisp(p.s||"?")} ~ ${mdisp(p.e||"?")}</span>${d!=null?`<span class="phase-vdays">${d}일</span>`:""}</div>`;}).join("")}</div>`:""}
     ${a.body&&(a.fileData||a.link)?`<div style="margin:-2px 0 8px;white-space:pre-wrap;line-height:1.6;font-size:12.5px;color:var(--ink-soft)">${esc(a.body)}</div>`:""}
     ${C.checks(a.checks)}
     <details style="margin-top:9px"><summary style="cursor:pointer;font-size:11.5px;color:var(--muted);font-family:var(--fm)">버전 이력 (${vs.length})</summary>
@@ -1800,7 +1813,24 @@ function assetFormBody(){
       <label class="chip"><input type="radio" name="assrc" value="text"><span>텍스트</span></label></div></label>
     <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)<br>여러 개를 올리면 <b>PC 파일명 순서</b>로 정렬되며(아래에서 드래그로 변경 가능), <b>그 순서대로 등록·표시</b>됩니다. <b>카드뉴스</b>는 같은 순서로 한 묶음이 됩니다.</div><div id="as_filelist" class="dnd-list"></div></div>
     <label class="fld" id="as_linkWrap" style="display:none"><span class="lab">파일 링크 <span class="hint">한 줄에 하나씩 · 최대 10개</span></span><textarea id="as_links" rows="4" placeholder="https://drive.google.com/...&#10;https://youtu.be/...&#10;https://..."></textarea></label>
-    <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="예) 광고 카피, 콘텐츠 본문, 게시물 문구 등을 입력하세요"></textarea></label>`;
+    <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="예) 광고 카피, 콘텐츠 본문, 게시물 문구 등을 입력하세요"></textarea></label>
+    ${ASSET_PHASES_OK?`<div id="as_phaseWrap" style="display:none;border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
+      <div class="lab" style="margin-bottom:6px">영상 단계별 기간 <span class="hint">선택 입력 · 시작~완료일을 넣으면 소요 일수가 계산됩니다</span></div>
+      ${phaseRows()}</div>`:""}`;
+}
+const PHASE_DEFS=[["plan","기획"],["shoot","촬영"],["edit","편집"]];
+function phaseRows(pre){
+  pre=pre||{};
+  return PHASE_DEFS.map(([k,lab])=>{ const p=pre[k]||{};
+    return `<div class="phase-row"><span class="phase-lab">${lab}</span>
+      <input type="date" id="ph_${k}_s" value="${p.s||""}"><span class="phase-tilde">~</span><input type="date" id="ph_${k}_e" value="${p.e||""}">
+      <span class="phase-days" id="ph_${k}_d"></span></div>`; }).join("");
+}
+function phaseDays(s,e){ if(!s||!e) return null; const a=mts(s), b=mts(e); if(isNaN(a)||isNaN(b)||b<a) return null; return Math.round((b-a)/86400000)+1; } // 시작·완료 포함 일수
+function collectPhases(){ const out={}; PHASE_DEFS.forEach(([k])=>{ const s=val("ph_"+k+"_s"), e=val("ph_"+k+"_e"); if(s||e) out[k]={s:s||"",e:e||""}; }); return out; }
+function wirePhaseCalc(){
+  PHASE_DEFS.forEach(([k])=>{ const upd=()=>{ const d=phaseDays(val("ph_"+k+"_s"),val("ph_"+k+"_e")); const el=document.getElementById("ph_"+k+"_d"); if(el) el.textContent=d!=null?`${d}일`:(val("ph_"+k+"_s")&&val("ph_"+k+"_e")?"날짜 확인":""); };
+    ["ph_"+k+"_s","ph_"+k+"_e"].forEach(id=>{ const el=document.getElementById(id); if(el) el.onchange=upd; }); upd(); });
 }
 function wireAssetForm(){
   const upd=()=>{ const v=(document.querySelector('#as_src input:checked')||{}).value||"file";
@@ -1810,6 +1840,9 @@ function wireAssetForm(){
   document.querySelectorAll('#as_src input').forEach(r=>r.onchange=upd); upd();
   const fi=document.getElementById("as_file");
   if(fi && document.getElementById("as_filelist")) fi.onchange=()=>{ asFiles=[...fi.files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:"base"})); renderAsFileList(); };
+  const ty=document.getElementById("as_type")||document.getElementById("ae_type"), pw=document.getElementById("as_phaseWrap");
+  if(ty && pw){ const updP=()=>{ pw.style.display=ty.value==="video"?"block":"none"; }; ty.addEventListener("change",updP); updP(); }
+  wirePhaseCalc();
 }
 async function makeWebpThumb(file, maxDim=720, q=0.72){
   if(!(file.type||"").startsWith("image/")) return null;
@@ -1880,6 +1913,8 @@ function openAssetModal(taskId){
     if(!atts.length){toast("파일·링크·텍스트 중 하나를 입력하세요");return false;}
     const t=Store.task(taskId);
     const note=val("as_note").trim(), kw=val("as_kw").trim(), type=val("as_type");
+    const phases=(type==="video"&&ASSET_PHASES_OK)?collectPhases():null;
+    const ph=phases&&Object.keys(phases).length?phases:null;
     const added=[];
     const mkVer=async a=>{ const v0={id:Store.uid(),assetId:a.id,no:1,changes:"초안 업로드",reason:"신규 제작",editorId:me().id,createdAt:Date.now()}; await Store.addVersion(v0); };
     if(type==="cardnews" && ASSET_PAGES_OK){
@@ -1898,6 +1933,7 @@ function openAssetModal(taskId){
     } else {
       for(const att of atts){
         const a={id:Store.uid(),taskId,type,authorId:me().id,ver:1,...att,body:att.body||"",note,keywords:kw,checks:null,createdAt:Date.now()};
+        if(ph) a.phases=ph;
         if(await Store.addAsset(a)){ added.push(a); await mkVer(a); }
       }
     }
@@ -1937,6 +1973,9 @@ function openAssetEditModal(id){
   const cur = a.fileData ? "file" : (a.link ? "link" : "text");
   const oldPath = a.filePath||null;
   const oldThumb = a.thumbPath||null;
+  const t=Store.task(a.taskId);
+  const preReview = t && STATUS[t.status].idx < STATUS.manager_review.idx;   // 팀장 검토 요청 전
+  const canPhase = ASSET_PHASES_OK && preReview;                              // 단계 기간 편집 가능 단계
   Modal.open({title:"산출물 수정",okLabel:"저장",body:`
     <label class="fld"><span class="lab">유형</span><select id="ae_type">${Object.entries(ASSET_TYPES).map(([k,v])=>`<option value="${k}" ${k===a.type?"selected":""}>${v}</option>`).join("")}</select></label>
     <label class="fld"><span class="lab">설명</span><input type="text" id="ae_note" value="${esc(a.note||"")}" placeholder="예) 여름 카드뉴스 3종"></label>
@@ -1950,7 +1989,10 @@ function openAssetEditModal(id){
       <input type="file" id="as_file" accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip">
       <div class="hint" style="margin-top:6px">이미지·영상·PDF·문서 (50MB 이하)</div></div>
     <label class="fld" id="as_linkWrap" style="display:none"><span class="lab">URL 링크</span><textarea id="as_links" rows="3" placeholder="https://...">${esc(a.link||"")}</textarea></label>
-    <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="텍스트 내용">${esc(a.body||"")}</textarea></label>`,
+    <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="텍스트 내용">${esc(a.body||"")}</textarea></label>
+    ${canPhase?`<div id="as_phaseWrap" style="display:none;border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
+      <div class="lab" style="margin-bottom:6px">영상 단계별 기간 <span class="hint">선택 입력 · 검토 요청 전까지 담당자가 추가·수정 가능</span></div>
+      ${phaseRows(a.phases||{})}</div>`:(ASSET_PHASES_OK&&a.type==="video"&&a.phases&&Object.keys(a.phases).length?`<div class="hint" style="margin-top:6px">단계별 기간은 팀장 검토 요청 전 단계에서만 수정할 수 있습니다.</div>`:"")}`,
     submit:async()=>{
       const type=val("ae_type"),note=val("ae_note").trim(),kw=val("ae_kw").trim();
       const mode=asSrcMode();
@@ -1981,6 +2023,11 @@ function openAssetEditModal(id){
       }
       const ok=await Store.update("assets",id,patch,()=>{ a.type=type; a.note=note; a.keywords=kw; applyExtra(); });
       if(!ok){ toast("수정 실패 — 다시 시도하세요"); return false; }
+      if(canPhase && type==="video"){                       // 단계 기간 추가/수정 (검토 전 단계만)
+        const ph=collectPhases();
+        const ok2=await Store.update("assets",id,{phases:Object.keys(ph).length?ph:null},()=>{ a.phases=Object.keys(ph).length?ph:null; });
+        if(!ok2) toast("단계 기간 저장 실패 — supabase_asset_phases.sql 실행 여부 확인");
+      }
       if(newPath && oldPath && oldPath!==newPath){ const rm=[oldPath]; if(oldThumb&&oldThumb!==patch.thumb_path)rm.push(oldThumb); try{ await sb.storage.from(BUCKET).remove(rm); }catch(e){} } // 교체된 옛 파일·썸네일 정리
       const t=Store.task(a.taskId); if(t)Store.log(me().id,t.id,"asset","산출물을 수정했습니다");
       toast("수정되었습니다"); render();
