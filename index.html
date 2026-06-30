@@ -562,7 +562,7 @@ const Store = (()=>{
     try{ db.taskMembers=await get("task_members",Maps.taskMember.from); TASK_MEMBERS_OK=true; }catch(e){ db.taskMembers=[]; TASK_MEMBERS_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
     try{ db.meetingComments=await get("meeting_comments",Maps.meetingComment.from); MEETING_EXT_OK=true; }catch(e){ db.meetingComments=[]; MEETING_EXT_OK=false; }
-    try{ const {data}=await sb.from("app_settings").select("value").eq("key","ai").maybeSingle(); if(data&&data.value){ AI.key=data.value.key||""; AI.model=data.value.model||AI.model; AI.useReal=!!data.value.useReal; } APP_SETTINGS_OK=true; }catch(e){ APP_SETTINGS_OK=false; }
+    try{ const {data}=await sb.from("app_settings").select("value").eq("key","ai").maybeSingle(); if(data&&data.value){ AI.key=data.value.key||""; AI.model=data.value.model||AI.model; AI.useReal=!!data.value.useReal; AI.mode=data.value.mode||"direct"; } APP_SETTINGS_OK=true; }catch(e){ APP_SETTINGS_OK=false; }
   }
   return {
     init(){ db=blank(); },
@@ -695,9 +695,15 @@ const Store = (()=>{
    3. AI SERVICE  (시뮬레이터 + 실제 OpenAI / 프롬프트 빌더 분리)
    확장 지점: callOpenAI 를 Make 웹훅/서버로 교체하면 키 은닉 가능
 ===================================================================== */
-let AI={key:"",model:"gpt-4o-mini",useReal:false};
+let AI={key:"",model:"gpt-4o-mini",useReal:false,mode:"direct"};   // mode: 'direct'(브라우저 직접) | 'server'(Edge Function 경유)
 const AiService=(()=>{
   async function call(system,user){
+    if(AI.mode==="server"){                       // Supabase Edge Function 경유 (사내망 우회·키 은닉)
+      const {data,error}=await sb.functions.invoke("ai-proxy",{body:{model:AI.model,system,user}});
+      if(error) throw new Error("서버 함수 호출 실패: "+(error.message||String(error)).slice(0,200));
+      if(data&&data.error) throw new Error("OpenAI "+(data.status||"")+": "+String(data.error).slice(0,300));
+      return JSON.parse(String((data&&data.content)||"").replace(/```json|```/g,"").trim());
+    }
     const res=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+AI.key},
       body:JSON.stringify({model:AI.model,temperature:0.4,response_format:{type:"json_object"},
@@ -706,7 +712,7 @@ const AiService=(()=>{
     const data=await res.json();
     return JSON.parse((data.choices?.[0]?.message?.content||"").replace(/```json|```/g,"").trim());
   }
-  const live=()=>AI.useReal&&AI.key;
+  const live=()=>AI.useReal&&(AI.mode==="server"||!!AI.key);   // 서버 경유는 브라우저 키 불필요
   // --- 3.1 업로드 검사
   function simChecks(asset){
     const txt=((asset.note||"")+" "+(asset.keywords||"")+" "+(asset.body||"")).toLowerCase();
@@ -2857,7 +2863,7 @@ function renderSide(){
 function renderBar(){
   const u=me();
   document.getElementById("who").innerHTML=`<b>${esc(u.name)}</b> · ${({member:"실무자",manager:"팀장",executive:"대표",viewer:"뷰어",partner:"파트너"})[u.role]||u.role}`;
-  const f=document.getElementById("aiFlag"); f.textContent=AiService.live()?("OpenAI · "+AI.model):"AI 시뮬레이터"; f.classList.toggle("live",AiService.live());
+  const f=document.getElementById("aiFlag"); f.textContent=AiService.live()?((AI.mode==="server"?"OpenAI(서버) · ":"OpenAI · ")+AI.model):"AI 시뮬레이터"; f.classList.toggle("live",AiService.live());
 }
 function render(){
   if(me() && me().role==="partner" && session.route.view!=="generator") session.route={view:"generator"};
@@ -2989,20 +2995,27 @@ function openAiCfg(){
     return;
   }
   Modal.open({title:"AI 연동 설정 (팀 공용)",okLabel:"저장",body:`
-    <label class="fld"><span class="lab">OpenAI API 키 <span class="hint">sk- 로 시작</span></span><input type="password" id="ai_key" placeholder="sk-..." value="${esc(AI.key)}"></label>
+    <label class="fld"><span class="lab">호출 방식</span><select id="ai_mode">
+      <option value="server" ${AI.mode==="server"?"selected":""}>서버 경유(Edge Function) — 권장 · 사내망 우회·키 은닉</option>
+      <option value="direct" ${AI.mode!=="server"?"selected":""}>브라우저 직접 호출 — 키 필요 · 사내망 차단 가능</option></select></label>
+    <div id="ai_keywrap" class="fld" style="${AI.mode==="server"?"display:none":""}"><span class="lab">OpenAI API 키 <span class="hint">sk- 로 시작 · 브라우저 직접 호출 시에만 필요</span></span><input type="password" id="ai_key" placeholder="sk-..." value="${esc(AI.key)}"></div>
+    <div id="ai_servernote" class="callout" style="${AI.mode==="server"?"":"display:none"};margin-bottom:12px;font-size:12px">서버 경유는 키를 <b>Edge Function 비밀값(OPENAI_API_KEY)</b>으로 보관합니다. 앱에는 키를 넣지 않습니다. 함수 배포·비밀값 설정은 함께 드린 가이드(<b>edge_ai-proxy 가이드</b>)를 따르세요.</div>
     <label class="fld"><span class="lab">모델</span><select id="ai_model">
       <option value="gpt-4o-mini" ${AI.model==="gpt-4o-mini"?"selected":""}>gpt-4o-mini (빠름·저렴)</option>
       <option value="gpt-4o" ${AI.model==="gpt-4o"?"selected":""}>gpt-4o (품질 우선)</option></select></label>
     <label class="chip" style="display:block;margin-bottom:14px"><input type="checkbox" id="ai_real" ${AI.useReal?"checked":""} style="position:static;opacity:1;width:auto;margin-right:8px;vertical-align:middle"><span style="border:0;padding:0;color:var(--ink);font-weight:600">실제 OpenAI 호출 사용</span></label>
-    <div class="warnbox">팀 공용으로 저장되어 <b>로그인한 팀장·실무자 모두 자동 사용</b>합니다. 로그인한 팀원은 개발자도구로 키를 볼 수 있으므로, <b>OpenAI 대시보드에서 월 사용 한도(usage limit)를 반드시 설정</b>하세요. (뷰어·파트너는 키에 접근하지 못합니다.)</div>`,
+    <div class="warnbox">팀 공용으로 저장되어 <b>로그인한 팀장·실무자 모두 자동 사용</b>합니다. <b>OpenAI 대시보드에서 월 사용 한도(usage limit)</b>를 설정해 두세요.</div>`,
     submit:async()=>{
-      const key=val("ai_key").trim(), model=val("ai_model"), useReal=document.getElementById("ai_real").checked&&!!key;
-      const ok=await Store.saveAi({key,model,useReal});
+      const mode=val("ai_mode"), model=val("ai_model"), key=(document.getElementById("ai_key")?val("ai_key").trim():AI.key);
+      const useReal=document.getElementById("ai_real").checked && (mode==="server"||!!key);
+      const ok=await Store.saveAi({key:mode==="server"?"":key,model,useReal,mode});
       if(!ok){ toast("저장 실패 — supabase_app_settings.sql 실행 여부를 확인하세요"); return false; }
-      AI.key=key; AI.model=model; AI.useReal=useReal;
-      toast(useReal?"팀 공용 OpenAI 호출이 켜졌습니다":"저장됨 (시뮬레이터)");
+      AI.key=mode==="server"?"":key; AI.model=model; AI.useReal=useReal; AI.mode=mode;
+      toast(useReal?(mode==="server"?"서버 경유 OpenAI 호출이 켜졌습니다":"브라우저 직접 호출이 켜졌습니다"):"저장됨 (시뮬레이터)");
       render();
     }});
+  const msel=document.getElementById("ai_mode");
+  if(msel) msel.onchange=()=>{ const sv=msel.value==="server"; const kw=document.getElementById("ai_keywrap"), sn=document.getElementById("ai_servernote"); if(kw)kw.style.display=sv?"none":""; if(sn)sn.style.display=sv?"":"none"; };
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
