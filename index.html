@@ -669,7 +669,7 @@ const AiService=(()=>{
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+AI.key},
       body:JSON.stringify({model:AI.model,temperature:0.4,response_format:{type:"json_object"},
         messages:[{role:"system",content:system},{role:"user",content:user}]})});
-    if(!res.ok){const t=await res.text();throw new Error("OpenAI "+res.status+": "+t.slice(0,120));}
+    if(!res.ok){const t=await res.text();throw new Error("OpenAI "+res.status+": "+t.slice(0,300));}
     const data=await res.json();
     return JSON.parse((data.choices?.[0]?.message?.content||"").replace(/```json|```/g,"").trim());
   }
