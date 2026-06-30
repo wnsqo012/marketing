@@ -226,6 +226,8 @@
   .arow{border:1px solid var(--line);border-radius:10px;padding:11px;background:var(--surface)}
   .alist .prev{padding:8px}
   .alist img.prev-media{width:100%;height:170px;object-fit:contain;max-height:none;margin:0;cursor:zoom-in;background:var(--surface-2)}
+  .cardnews-cover{position:relative;cursor:zoom-in}
+  .cardnews-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;pointer-events:none}
   .alist .prev-name{margin-top:6px}
   .brep-list{display:flex;flex-direction:column;gap:10px}
   .brep-row{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:8px}
@@ -410,7 +412,7 @@ const KPIS = [
   {k:"CTR",unit:"%"},{k:"CVR",unit:"%"},{k:"ROAS",unit:"%"},{k:"매출",unit:"만원"},
   {k:"상담",unit:"건"},{k:"회원가입",unit:"명"},{k:"도달",unit:"명"},
 ];
-const ASSET_TYPES = {plan:"기획",design:"디자인",content:"콘텐츠",video:"영상",landing:"랜딩",ad:"광고 소재 기획",advert:"광고 소재 제작"};
+const ASSET_TYPES = {plan:"기획",design:"디자인",content:"콘텐츠",cardnews:"카드뉴스",video:"영상",landing:"랜딩",ad:"광고 소재 기획",advert:"광고 소재 제작"};
 const REJECT_CATS = ["브랜드","디자인","카피","기획","전략","일정","법무","기타"];
 const CHECKLIST = ["브랜드 확인","오탈자","CTA","랜딩","심의","일정"];
 
@@ -429,6 +431,7 @@ let sb=null;
 const BUCKET="assets";
 const publicUrl=path=>`${SUPA.url}/storage/v1/object/public/${BUCKET}/${path}`;
 let ASSET_THUMB_OK=false;   // thumb_path 컬럼 존재 시 true (loadAll에서 감지)
+let ASSET_PAGES_OK=false;   // pages 컬럼 존재 시 true (카드뉴스 묶음)
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_EXT_OK=false;   // 회의명(title)+회의댓글 확장 적용 시 true
@@ -443,8 +446,8 @@ const Maps={
     to:c=>({id:c.id,name:c.name,goal:c.goal||null,kpi:c.kpi||null})},
   task:{from:r=>({id:r.id,title:r.title,purpose:r.purpose,brandId:r.brand_id,campaignId:r.campaign_id,ownerId:r.owner_id,priority:r.priority,start:r.start_date?Date.parse(r.start_date):null,due:r.due?Date.parse(r.due):Date.now(),status:r.status,kpis:r.kpis||[],execReport:r.exec_report,createdAt:Date.parse(r.created_at),updatedAt:Date.parse(r.updated_at)}),
     to:t=>({id:t.id,title:t.title,purpose:t.purpose,brand_id:t.brandId,campaign_id:t.campaignId||null,owner_id:t.ownerId,priority:t.priority,start_date:t.start?iso(t.start):null,due:iso(t.due),status:t.status,kpis:t.kpis,exec_report:t.execReport,created_at:iso(t.createdAt),updated_at:iso(t.updatedAt)})},
-  asset:{from:r=>({id:r.id,taskId:r.task_id,type:r.type,authorId:r.author_id,ver:r.ver,link:r.link,filePath:r.file_path,fileName:r.file_name,fileMime:r.file_mime,fileData:r.file_path?publicUrl(r.file_path):null,thumbPath:r.thumb_path||null,thumbData:r.thumb_path?publicUrl(r.thumb_path):null,note:r.note,keywords:r.keywords,body:r.body||"",checks:r.checks,createdAt:Date.parse(r.created_at)}),
-    to:a=>{const o={id:a.id,task_id:a.taskId,type:a.type,author_id:a.authorId,ver:a.ver,link:a.link||null,file_path:a.filePath||null,file_name:a.fileName||null,file_mime:a.fileMime||null,note:a.note,keywords:a.keywords,checks:a.checks,created_at:iso(a.createdAt)}; if(a.body) o.body=a.body; if(a.thumbPath) o.thumb_path=a.thumbPath; return o;}},
+  asset:{from:r=>({id:r.id,taskId:r.task_id,type:r.type,authorId:r.author_id,ver:r.ver,link:r.link,filePath:r.file_path,fileName:r.file_name,fileMime:r.file_mime,fileData:r.file_path?publicUrl(r.file_path):null,thumbPath:r.thumb_path||null,thumbData:r.thumb_path?publicUrl(r.thumb_path):null,pages:Array.isArray(r.pages)?r.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null,fileData:p.filePath?publicUrl(p.filePath):null,thumbData:p.thumbPath?publicUrl(p.thumbPath):null})):null,note:r.note,keywords:r.keywords,body:r.body||"",checks:r.checks,createdAt:Date.parse(r.created_at)}),
+    to:a=>{const o={id:a.id,task_id:a.taskId,type:a.type,author_id:a.authorId,ver:a.ver,link:a.link||null,file_path:a.filePath||null,file_name:a.fileName||null,file_mime:a.fileMime||null,note:a.note,keywords:a.keywords,checks:a.checks,created_at:iso(a.createdAt)}; if(a.body) o.body=a.body; if(a.thumbPath) o.thumb_path=a.thumbPath; if(a.pages&&a.pages.length) o.pages=a.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null})); return o;}},
   version:{from:r=>({id:r.id,assetId:r.asset_id,no:r.no,changes:r.changes,reason:r.reason,editorId:r.editor_id,createdAt:Date.parse(r.created_at)}),
     to:v=>({id:v.id,asset_id:v.assetId,no:v.no,changes:v.changes,reason:v.reason,editor_id:v.editorId,created_at:iso(v.createdAt)})},
   review:{from:r=>({id:r.id,taskId:r.task_id,reviewerId:r.reviewer_id,role:r.role,decision:r.decision,checklist:r.checklist,cat:r.cat,detail:r.detail,comment:r.comment,createdAt:Date.parse(r.created_at)}),
@@ -515,6 +518,7 @@ const Store = (()=>{
     db.tasks=await get("tasks",Maps.task.from);
     db.assets=await get("assets",Maps.asset.from);
     try{ const {error}=await sb.from("assets").select("thumb_path").limit(1); ASSET_THUMB_OK=!error; }catch(e){ ASSET_THUMB_OK=false; }
+    try{ const {error}=await sb.from("assets").select("pages").limit(1); ASSET_PAGES_OK=!error; }catch(e){ ASSET_PAGES_OK=false; }
     db.versions=await get("versions",Maps.version.from);
     db.reviews=await get("reviews",Maps.review.from);
     db.performance=await get("performance",Maps.perf.from);
@@ -1049,9 +1053,15 @@ const C={
   checks(ch){if(!ch)return "";const lab={tone:"브랜드 톤",cta:"CTA",typo:"오탈자",legal:"법무",review:"심의"};
     return `<div class="checks">${Object.keys(lab).map(k=>{const c=ch[k]||{status:"pass",note:""};return `<span class="check ${c.status}" title="${esc(c.note)}">${c.status==="pass"?"✓":"!"} ${lab[k]}</span>`;}).join("")}</div>`;},
   preview(a){
-    const ic={plan:"📄",design:"🖼",content:"📝",video:"▶",landing:"🌐",ad:"📣",advert:"📢"}[a.type]||"📎";
+    const ic={plan:"📄",design:"🖼",content:"📝",cardnews:"🃏",video:"▶",landing:"🌐",ad:"📣",advert:"📢"}[a.type]||"📎";
     const canDL=["manager","executive"].includes(me().role);
     const dl=(url,name)=> canDL?`<button class="btn btn-ghost btn-sm" data-act="download-asset" data-src="${url}" data-name="${esc(name||'file')}">⬇ 다운로드</button>`:"";
+    if(a.type==="cardnews" && a.pages && a.pages.length){ const cover=a.pages[0];
+      return `<div class="prev">
+        <div class="cardnews-cover" data-act="zoom-cardnews" data-id="${a.id}"><img src="${cover.thumbData||cover.fileData}" alt="" class="prev-media" loading="lazy"><span class="cardnews-badge">🃏 ${a.pages.length}장</span></div>
+        <div class="prev-name">${esc(a.note||"카드뉴스")} · ${a.pages.length}장</div>
+        <div class="prev-acts"><button class="btn btn-ghost btn-sm" data-act="zoom-cardnews" data-id="${a.id}">🔍 펼쳐보기</button>${dl(cover.fileData,cover.fileName)}</div></div>`;
+    }
     if(a.fileData){ const mime=a.fileMime||"";
       if(mime.startsWith("image/")) return `<div class="prev">
         <img src="${a.thumbData||a.fileData}" alt="" class="prev-media" data-act="zoom" data-kind="image" data-src="${a.fileData}" data-name="${esc(a.fileName||'image')}" style="cursor:zoom-in" loading="lazy">
@@ -1516,6 +1526,7 @@ const Actions={
   },
   async "delete-comment"(el){ if(await Store.delComment(el.dataset.id)){ render(); } },
 
+  "zoom-cardnews"(el){ openCardnews(el.dataset.id); },
   "add-asset"(el){ openAssetModal(el.dataset.id); },
   "edit-schedule"(el){ openScheduleModal(el.dataset.id); },
   "edit-title"(el){ openTitleModal(el.dataset.id); },
@@ -1745,7 +1756,7 @@ function assetFormBody(){
       <label class="chip"><input type="radio" name="assrc" value="file" checked><span>파일 업로드</span></label>
       <label class="chip"><input type="radio" name="assrc" value="link"><span>URL 링크</span></label>
       <label class="chip"><input type="radio" name="assrc" value="text"><span>텍스트</span></label></div></label>
-    <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)</div></div>
+    <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)<br><b>카드뉴스</b> 유형은 선택한 이미지들이 <b>업로드 순서 그대로</b> 하나로 묶입니다.</div></div>
     <label class="fld" id="as_linkWrap" style="display:none"><span class="lab">파일 링크 <span class="hint">한 줄에 하나씩 · 최대 10개</span></span><textarea id="as_links" rows="4" placeholder="https://drive.google.com/...&#10;https://youtu.be/...&#10;https://..."></textarea></label>
     <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="예) 광고 카피, 콘텐츠 본문, 게시물 문구 등을 입력하세요"></textarea></label>`;
 }
@@ -1825,11 +1836,25 @@ function openAssetModal(taskId){
     const t=Store.task(taskId);
     const note=val("as_note").trim(), kw=val("as_kw").trim(), type=val("as_type");
     const added=[];
-    for(const att of atts){
-      const a={id:Store.uid(),taskId,type,authorId:me().id,ver:1,...att,body:att.body||"",note,keywords:kw,checks:null,createdAt:Date.now()};
-      if(await Store.addAsset(a)){ added.push(a);
-        const v0={id:Store.uid(),assetId:a.id,no:1,changes:"초안 업로드",reason:"신규 제작",editorId:me().id,createdAt:Date.now()};
-        await Store.addVersion(v0); }
+    const mkVer=async a=>{ const v0={id:Store.uid(),assetId:a.id,no:1,changes:"초안 업로드",reason:"신규 제작",editorId:me().id,createdAt:Date.now()}; await Store.addVersion(v0); };
+    if(type==="cardnews" && ASSET_PAGES_OK){
+      const imgs=atts.filter(x=>x.fileData&&(x.fileMime||"").startsWith("image/"));
+      const others=atts.filter(x=>!(x.fileData&&(x.fileMime||"").startsWith("image/")));
+      if(imgs.length){
+        const cover=imgs[0];                                   // 업로드 순서 그대로, 첫 장이 대표
+        const pages=imgs.map(x=>({filePath:x.filePath,fileName:x.fileName,fileMime:x.fileMime,thumbPath:x.thumbPath||null,fileData:x.fileData,thumbData:x.thumbData||null}));
+        const a={id:Store.uid(),taskId,type,authorId:me().id,ver:1,link:"",body:"",filePath:cover.filePath,fileName:cover.fileName,fileMime:cover.fileMime,fileData:cover.fileData,thumbPath:cover.thumbPath||null,thumbData:cover.thumbData||null,pages,note,keywords:kw,checks:null,createdAt:Date.now()};
+        if(await Store.addAsset(a)){ added.push(a); await mkVer(a); }
+      }
+      for(const att of others){
+        const a={id:Store.uid(),taskId,type:"content",authorId:me().id,ver:1,...att,body:att.body||"",note,keywords:kw,checks:null,createdAt:Date.now()};
+        if(await Store.addAsset(a)){ added.push(a); await mkVer(a); }
+      }
+    } else {
+      for(const att of atts){
+        const a={id:Store.uid(),taskId,type,authorId:me().id,ver:1,...att,body:att.body||"",note,keywords:kw,checks:null,createdAt:Date.now()};
+        if(await Store.addAsset(a)){ added.push(a); await mkVer(a); }
+      }
     }
     if(!added.length){ console.error("[asset insert] all failed"); return false; }
     Store.log(me().id,taskId,"asset",`산출물 ${added.length}건을 등록했습니다`);
@@ -2855,7 +2880,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","clear-filter","zoom","doc-view","download-asset","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","clear-filter","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
@@ -2891,6 +2916,11 @@ function openLightbox(src,kind,name,dlUrl){ // 단일(문서 등)
   const dl=document.getElementById("lbDl");
   dl.style.display=(["manager","executive"].includes(me()?.role)&&(dlUrl||kind==="image"||kind==="video"))?"block":"none";
   const lb=document.getElementById("lightbox"); lb.classList.remove("multi"); document.getElementById("lbCount").textContent=""; lb.classList.add("open");
+}
+function openCardnews(assetId){ // 카드뉴스 묶음만 좌우/키보드로 탐색
+  const a=Store.db.assets.find(x=>x.id===assetId); if(!a||!a.pages||!a.pages.length) return;
+  gallery=a.pages.map((p,i)=>({src:p.fileData,kind:"image",name:p.fileName||("card-"+(i+1))}));
+  galleryIdx=0; showGallery();
 }
 function openGallery(el){ // 현재 화면의 모든 이미지/영상을 모아 탐색
   const nodes=[...document.querySelectorAll('[data-act="zoom"]')], seen=new Set(); gallery=[];
