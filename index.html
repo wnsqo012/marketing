@@ -223,6 +223,9 @@
 
   .alist{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
   .alist>.arow{flex:1 1 200px;max-width:340px;min-width:0}
+  .asset-drag{cursor:grab;color:var(--muted);font-size:15px;user-select:none;line-height:1}
+  .alist>.arow.dragging{opacity:.45}
+  .alist>.arow.dragover{outline:2px dashed var(--primary);outline-offset:2px}
   .arow{border:1px solid var(--line);border-radius:10px;padding:11px;background:var(--surface)}
   .alist .prev{padding:8px}
   .alist img.prev-media{width:100%;height:170px;object-fit:contain;max-height:none;margin:0;cursor:zoom-in;background:var(--surface-2)}
@@ -444,6 +447,7 @@ const BUCKET="assets";
 const publicUrl=path=>`${SUPA.url}/storage/v1/object/public/${BUCKET}/${path}`;
 let ASSET_THUMB_OK=false;   // thumb_path 컬럼 존재 시 true (loadAll에서 감지)
 let ASSET_PAGES_OK=false;   // pages 컬럼 존재 시 true (카드뉴스 묶음)
+let ASSET_SORT_OK=false;    // sort_no 컬럼 존재 시 true (산출물 순서)
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_EXT_OK=false;   // 회의명(title)+회의댓글 확장 적용 시 true
@@ -458,8 +462,8 @@ const Maps={
     to:c=>({id:c.id,name:c.name,goal:c.goal||null,kpi:c.kpi||null})},
   task:{from:r=>({id:r.id,title:r.title,purpose:r.purpose,brandId:r.brand_id,campaignId:r.campaign_id,ownerId:r.owner_id,priority:r.priority,start:r.start_date?Date.parse(r.start_date):null,due:r.due?Date.parse(r.due):Date.now(),status:r.status,kpis:r.kpis||[],execReport:r.exec_report,createdAt:Date.parse(r.created_at),updatedAt:Date.parse(r.updated_at)}),
     to:t=>({id:t.id,title:t.title,purpose:t.purpose,brand_id:t.brandId,campaign_id:t.campaignId||null,owner_id:t.ownerId,priority:t.priority,start_date:t.start?iso(t.start):null,due:iso(t.due),status:t.status,kpis:t.kpis,exec_report:t.execReport,created_at:iso(t.createdAt),updated_at:iso(t.updatedAt)})},
-  asset:{from:r=>({id:r.id,taskId:r.task_id,type:r.type,authorId:r.author_id,ver:r.ver,link:r.link,filePath:r.file_path,fileName:r.file_name,fileMime:r.file_mime,fileData:r.file_path?publicUrl(r.file_path):null,thumbPath:r.thumb_path||null,thumbData:r.thumb_path?publicUrl(r.thumb_path):null,pages:Array.isArray(r.pages)?r.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null,fileData:p.filePath?publicUrl(p.filePath):null,thumbData:p.thumbPath?publicUrl(p.thumbPath):null})):null,note:r.note,keywords:r.keywords,body:r.body||"",checks:r.checks,createdAt:Date.parse(r.created_at)}),
-    to:a=>{const o={id:a.id,task_id:a.taskId,type:a.type,author_id:a.authorId,ver:a.ver,link:a.link||null,file_path:a.filePath||null,file_name:a.fileName||null,file_mime:a.fileMime||null,note:a.note,keywords:a.keywords,checks:a.checks,created_at:iso(a.createdAt)}; if(a.body) o.body=a.body; if(a.thumbPath) o.thumb_path=a.thumbPath; if(a.pages&&a.pages.length) o.pages=a.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null})); return o;}},
+  asset:{from:r=>({id:r.id,taskId:r.task_id,type:r.type,authorId:r.author_id,ver:r.ver,link:r.link,filePath:r.file_path,fileName:r.file_name,fileMime:r.file_mime,fileData:r.file_path?publicUrl(r.file_path):null,thumbPath:r.thumb_path||null,thumbData:r.thumb_path?publicUrl(r.thumb_path):null,pages:Array.isArray(r.pages)?r.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null,fileData:p.filePath?publicUrl(p.filePath):null,thumbData:p.thumbPath?publicUrl(p.thumbPath):null})):null,sortNo:(r.sort_no==null?null:r.sort_no),note:r.note,keywords:r.keywords,body:r.body||"",checks:r.checks,createdAt:Date.parse(r.created_at)}),
+    to:a=>{const o={id:a.id,task_id:a.taskId,type:a.type,author_id:a.authorId,ver:a.ver,link:a.link||null,file_path:a.filePath||null,file_name:a.fileName||null,file_mime:a.fileMime||null,note:a.note,keywords:a.keywords,checks:a.checks,created_at:iso(a.createdAt)}; if(a.body) o.body=a.body; if(a.thumbPath) o.thumb_path=a.thumbPath; if(a.pages&&a.pages.length) o.pages=a.pages.map(p=>({filePath:p.filePath,fileName:p.fileName,fileMime:p.fileMime,thumbPath:p.thumbPath||null})); if(a.sortNo!=null) o.sort_no=a.sortNo; return o;}},
   version:{from:r=>({id:r.id,assetId:r.asset_id,no:r.no,changes:r.changes,reason:r.reason,editorId:r.editor_id,createdAt:Date.parse(r.created_at)}),
     to:v=>({id:v.id,asset_id:v.assetId,no:v.no,changes:v.changes,reason:v.reason,editor_id:v.editorId,created_at:iso(v.createdAt)})},
   review:{from:r=>({id:r.id,taskId:r.task_id,reviewerId:r.reviewer_id,role:r.role,decision:r.decision,checklist:r.checklist,cat:r.cat,detail:r.detail,comment:r.comment,createdAt:Date.parse(r.created_at)}),
@@ -531,6 +535,7 @@ const Store = (()=>{
     db.assets=await get("assets",Maps.asset.from);
     try{ const {error}=await sb.from("assets").select("thumb_path").limit(1); ASSET_THUMB_OK=!error; }catch(e){ ASSET_THUMB_OK=false; }
     try{ const {error}=await sb.from("assets").select("pages").limit(1); ASSET_PAGES_OK=!error; }catch(e){ ASSET_PAGES_OK=false; }
+    try{ const {error}=await sb.from("assets").select("sort_no").limit(1); ASSET_SORT_OK=!error; }catch(e){ ASSET_SORT_OK=false; }
     db.versions=await get("versions",Maps.version.from);
     db.reviews=await get("reviews",Maps.review.from);
     db.performance=await get("performance",Maps.perf.from);
@@ -557,7 +562,7 @@ const Store = (()=>{
     brand:id=>db.brands.find(b=>b.id===id),
     campaign:id=>db.campaigns.find(c=>c.id===id),
     task:id=>db.tasks.find(t=>t.id===id),
-    assetsOf:tid=>db.assets.filter(a=>a.taskId===tid).sort((a,b)=>a.createdAt-b.createdAt),
+    assetsOf:tid=>db.assets.filter(a=>a.taskId===tid).sort((a,b)=>((a.sortNo==null?1e9:a.sortNo)-(b.sortNo==null?1e9:b.sortNo))||(a.createdAt-b.createdAt)),
     versionsOf:aid=>db.versions.filter(v=>v.assetId===aid).sort((a,b)=>b.no-a.no),
     reviewsOf:tid=>db.reviews.filter(r=>r.taskId===tid).sort((a,b)=>b.createdAt-a.createdAt),
     perfOf:tid=>db.performance.find(p=>p.taskId===tid),
@@ -1297,7 +1302,7 @@ function viewTask(id){
       <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>산출물</h3><span class="tag">${assets.length}</span>
         ${["member","manager"].includes(role)&&assets.some(a=>(a.fileMime||"").startsWith("image/"))?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-act="bulk-replace" data-id="${t.id}">🖼 이미지 일괄 교체</button>`:""}
         ${["member","manager"].includes(role)?`<button class="btn btn-ghost btn-sm" ${assets.some(a=>(a.fileMime||"").startsWith("image/"))?"":'style="margin-left:auto"'} data-act="add-asset" data-id="${t.id}">+ 산출물</button>`:""}</div>
-        <div class="card-b">${assets.length?`<div class="alist">${assets.map(a=>assetCard(a)).join("")}</div>`:C.empty("📎","산출물 없음","‘+ 산출물’로 결과물을 등록하세요.")}</div></div>
+        <div class="card-b">${assets.length?`<div class="alist" id="asset-list" data-task="${t.id}">${assets.map(a=>assetCard(a)).join("")}</div>`:C.empty("📎","산출물 없음","‘+ 산출물’로 결과물을 등록하세요.")}</div></div>
 
       <!-- 검토 요약 -->
       ${STATUS[t.status].idx>=STATUS.manager_review.idx?`
@@ -1342,8 +1347,9 @@ function perfStat(l,v,u){return `<div class="card stat" style="padding:11px 13px
 function assetCard(a){
   const au=Store.user(a.authorId),vs=Store.versionsOf(a.id);
   const role=me().role, canEdit=role==="manager"||(role==="member"&&a.authorId===me().id);
-  return `<div class="arow">
-    <div class="row" style="justify-content:space-between"><div class="row" style="gap:8px"><span class="tag">${ASSET_TYPES[a.type]||a.type}</span><b style="font-size:13px">${esc(a.note||"산출물")}</b><span class="tag">v${a.ver}</span></div>
+  const canSort=ASSET_SORT_OK&&(role==="manager"||Store.isWorker(a.taskId,me().id));
+  return `<div class="arow" data-asset="${a.id}"${canSort?' data-sortable="1"':""}>
+    <div class="row" style="justify-content:space-between"><div class="row" style="gap:8px">${canSort?`<span class="asset-drag" draggable="true" data-id="${a.id}" title="드래그로 순서 변경">⠿</span>`:""}<span class="tag">${ASSET_TYPES[a.type]||a.type}</span><b style="font-size:13px">${esc(a.note||"산출물")}</b><span class="tag">v${a.ver}</span></div>
       <div class="row" style="gap:6px">
         ${["member","manager"].includes(role)?`<button class="btn btn-ghost btn-sm" data-act="new-version" data-id="${a.id}">+ 버전</button>`:""}
         ${canEdit?`<button class="btn btn-ghost btn-sm" data-act="edit-asset" data-id="${a.id}">수정</button>`:""}
@@ -2740,6 +2746,36 @@ function aiMeetingPanel(m){
   }
   return `<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">${btn}${panel}</div>`;
 }
+function wireAssetReorder(){
+  const list=document.getElementById("asset-list"); if(!list) return;
+  let dragId=null;
+  list.querySelectorAll(".asset-drag").forEach(h=>{
+    h.addEventListener("dragstart",e=>{ dragId=h.dataset.id; e.dataTransfer.effectAllowed="move"; const card=h.closest(".arow"); if(card) card.classList.add("dragging"); });
+    h.addEventListener("dragend",()=>{ dragId=null; list.querySelectorAll(".arow").forEach(c=>c.classList.remove("dragging","dragover")); });
+  });
+  list.querySelectorAll('.arow[data-sortable]').forEach(card=>{
+    card.addEventListener("dragover",e=>{ if(!dragId)return; e.preventDefault(); card.classList.add("dragover"); });
+    card.addEventListener("dragleave",()=>card.classList.remove("dragover"));
+    card.addEventListener("drop",async e=>{ e.preventDefault(); card.classList.remove("dragover");
+      const targetId=card.dataset.asset; if(!dragId||dragId===targetId) return;
+      await reorderAssets(list.dataset.task, dragId, targetId);
+    });
+  });
+}
+async function reorderAssets(taskId, dragId, targetId){
+  const order=Store.assetsOf(taskId).map(a=>a.id);
+  const from=order.indexOf(dragId), to=order.indexOf(targetId);
+  if(from<0||to<0) return;
+  order.splice(to,0,order.splice(from,1)[0]);          // dragId를 target 자리로 이동
+  let okAll=true;
+  for(let i=0;i<order.length;i++){ const a=Store.db.assets.find(x=>x.id===order[i]); if(!a||a.sortNo===i) continue;
+    const ok=await Store.update("assets",a.id,{sort_no:i},()=>{a.sortNo=i;}); if(!ok) okAll=false; }
+  // 아직 sort_no가 없던 항목까지 모두 인덱스 부여(혼합 방지)
+  for(let i=0;i<order.length;i++){ const a=Store.db.assets.find(x=>x.id===order[i]); if(a&&a.sortNo==null){ const ok=await Store.update("assets",a.id,{sort_no:i},()=>{a.sortNo=i;}); if(!ok) okAll=false; } }
+  if(!okAll) toast("일부 순서 저장에 실패했습니다 — supabase_asset_sort.sql 실행 여부를 확인하세요");
+  else toast("순서를 변경했습니다");
+  render();
+}
 function navConfig(){
   const role=me().role;
   if(role==="partner") return [{view:"generator",ic:"🎨",label:"생성기"}];
@@ -2801,6 +2837,7 @@ function render(){
   if(v==="cleanup") wireOrphanTools();
   if(v==="gantt") wireGantt();
   if(v==="meetings") wireGantt();
+  if(v==="task") wireAssetReorder();
   // 필터 입력 연결 (업무 뷰)
   if(v==="tasks"){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
