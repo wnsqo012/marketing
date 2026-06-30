@@ -2565,13 +2565,11 @@ function viewMeeting(id){
   const isOwner=m.createdBy===me().id;
   const title=m.title||m.agenda.split("\n")[0].slice(0,80);
   const att=m.fileData?communityPreview({fileData:m.fileData,fileName:m.fileName,fileMime:m.fileMime}):"";
-  const minutesBlock = done
-    ? `<div class="callout" style="white-space:pre-wrap">${esc(m.minutes||"(회의록 없음)")}</div>`
-    : (canWrite
-        ? `<textarea id="mt_minutes" rows="8" placeholder="회의록을 작성하세요 (논의 내용, 결정 사항, 후속 조치 등)">${esc(m.minutes||"")}</textarea>
-           <div class="btn-row" style="margin-top:10px"><button class="btn btn-ghost" data-act="save-minutes" data-id="${m.id}">회의록 저장</button><button class="btn btn-primary" data-act="complete-meeting" data-id="${m.id}">✓ 회의 완료</button></div>
-           <div class="hint" style="margin-top:6px">회의록을 작성한 뒤 ‘회의 완료’를 누르면 완료 히스토리로 남습니다.</div>`
-        : `<div class="hint">${m.minutes?esc(m.minutes):"아직 회의록이 작성되지 않았습니다."}</div>`);
+  const minutesBlock = !canWrite
+    ? `<div class="callout" style="white-space:pre-wrap">${m.minutes?esc(m.minutes):"아직 회의록이 작성되지 않았습니다."}</div>`
+    : `<textarea id="mt_minutes" rows="8" placeholder="회의록을 작성하세요 (논의 내용, 결정 사항, 후속 조치 등)">${esc(m.minutes||"")}</textarea>
+       <div class="btn-row" style="margin-top:10px"><button class="btn btn-ghost" data-act="save-minutes" data-id="${m.id}">회의록 저장</button>${done?"":`<button class="btn btn-primary" data-act="complete-meeting" data-id="${m.id}">✓ 회의 완료</button>`}</div>
+       <div class="hint" style="margin-top:6px">${done?"완료된 회의입니다. 회의록은 계속 수정·저장할 수 있습니다.":"회의록을 작성한 뒤 ‘회의 완료’를 누르면 완료 히스토리로 남습니다."}</div>`;
   // 회의 첨부(댓글형)
   const cmts=MEETING_EXT_OK?Store.mCommentsOf(m.id):[];
   const cmtHtml=cmts.map(c=>{ const u=Store.user(c.authorId), mine=c.authorId===me().id||role==="manager";
