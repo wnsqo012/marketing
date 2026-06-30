@@ -202,6 +202,7 @@
   .g-due .tt{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
   .g-due .mm{font-size:11px;color:var(--muted)}
   .g-empty-range{padding:20px;text-align:center;color:var(--muted);font-size:12.5px}
+  .mg-pill{position:absolute;top:3px;transform:translateX(-50%);background:var(--primary);color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:11px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.18);cursor:pointer;z-index:2}
   @media(max-width:760px){.g-head .lbl,.g-row .lbl{flex-basis:130px} .g-toolbar{gap:7px} .g-sel,.g-seg button{font-size:12px}}
   /* monthly workload */
   .yearchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -1077,7 +1078,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:""},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},gantt:{range:"month",anchor:null,group:"brand"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:""},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -1419,8 +1420,8 @@ function latestVersionNote(taskId){
 const Actions={
   goto(el){ session.route={view:el.dataset.view}; render(); },
   "open-task"(el){ session.route={view:"task",id:el.dataset.id}; render(); },
-  "g-range"(el){ session.gantt.range=el.dataset.range; session.gantt.anchor=null; render(); },
-  "g-nav"(el){ ganttShift(+el.dataset.dir); render(); },
+  "g-range"(el){ const g=el.dataset.gt==="m"?session.mgantt:session.gantt; g.range=el.dataset.range; g.anchor=null; render(); },
+  "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
   "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:""}; render(); },
 
   "new-task"(){ openTaskModal(); },
@@ -2069,8 +2070,8 @@ function viewBrands(){
   </div></div>
   <div class="hint" style="margin-top:10px">※ 업무가 연결된 브랜드는 삭제할 수 없습니다. 해당 업무를 먼저 삭제하거나 브랜드를 바꿔주세요.</div>`;
 }
-function ganttWindow(){
-  const g=session.gantt, day=86400000;
+function ganttWindow(g){
+  g=g||session.gantt; const day=86400000;
   const sod=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();};
   const anchor = g.anchor!=null ? g.anchor : Date.now();
   if(g.range==="week"){ const dow=(new Date(anchor).getDay()+6)%7; const start=sod(anchor)-dow*day; return {start,end:start+7*day,range:"week",ticks:"day"}; }
@@ -2085,15 +2086,15 @@ function ganttTicks(win){
   else { let d=new Date(win.start); while(d.getTime()<win.end){ out.push({pct:pct(d.getTime()),label:`${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,"0")}`}); d=new Date(d.getFullYear(),d.getMonth()+1,1); } }
   return out;
 }
-function ganttLabel(win){
-  const g=session.gantt; if(!win) return "전체 기간";
+function ganttLabel(win,g){
+  g=g||session.gantt; if(!win) return "전체 기간";
   const s=new Date(win.start);
   if(g.range==="week"){ const e=new Date(win.end-86400000); return `${s.getMonth()+1}.${String(s.getDate()).padStart(2,"0")} ~ ${e.getMonth()+1}.${String(e.getDate()).padStart(2,"0")}`; }
   if(g.range==="month") return `${s.getFullYear()}.${String(s.getMonth()+1).padStart(2,"0")}`;
   return `${s.getFullYear()} ${Math.floor(s.getMonth()/3)+1}분기`;
 }
-function ganttShift(dir){
-  const g=session.gantt; if(g.range==="all") return; const day=86400000;
+function ganttShift(dir,g){
+  g=g||session.gantt; if(g.range==="all") return; const day=86400000;
   const a=new Date(g.anchor!=null?g.anchor:Date.now());
   if(g.range==="week") g.anchor=(g.anchor!=null?g.anchor:Date.now())+dir*7*day;
   else if(g.range==="month") g.anchor=new Date(a.getFullYear(),a.getMonth()+dir,1).getTime();
@@ -2153,7 +2154,8 @@ function viewGantt(){
     ${body}
   </div></div></div></div>`;
 }
-function wireGantt(){ const sel=document.getElementById("g_group"); if(sel) sel.addEventListener("change",()=>{ session.gantt.group=sel.value; render(); }); }
+function wireGantt(){ const sel=document.getElementById("g_group"); if(sel) sel.addEventListener("change",()=>{ session.gantt.group=sel.value; render(); });
+  const ms=document.getElementById("mg_group"); if(ms) ms.addEventListener("change",()=>{ session.mgantt.group=ms.value; render(); }); }
 function viewNotify(){
   const cfg=Settings.get();
   const evLabels={task_created:"새 업무 추가 → 팀장",task_created_me:"내가 만든 업무 생성 완료 → 본인",review_requested:"신규 검토 요청 → 팀장",review_resubmitted:"재검토 요청 → 팀장",review_submitted:"내 검토 요청 접수 → 담당자",review_resubmitted_me:"내 재검토 요청 접수 → 담당자",rejected:"반려 → 담당자",approved:"최종 승인(완료) → 담당자",post_created:"커뮤니티 새 글 → 전원",comment_added:"내 글에 새 댓글 → 작성자",due_soon:"마감 임박 → 담당자·팀장",overdue:"마감 초과 → 담당자·팀장"};
@@ -2526,7 +2528,35 @@ function viewMeetings(){
       <div style="font-weight:600;font-size:14px;margin:6px 0 2px">${att}${esc(m.title||(m.agenda.length>60?m.agenda.slice(0,60)+"…":m.agenda))}</div>
       <div class="hint">참석: ${esc(m.attendees)}${done&&m.doneAt?` · 완료 ${fmtDT(m.doneAt)}`:""}</div></div>`; };
   const sec=(title,arr,empty)=>`<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>${title}</h3><span class="tag">${arr.length}</span></div><div class="card-b">${arr.length?`<div class="alist" style="display:flex;flex-direction:column;gap:10px">${arr.map(card).join("")}</div>`:`<div class="hint">${empty}</div>`}</div></div>`;
-  return head+sec("예정된 회의",sched,"예정된 회의가 없습니다.")+sec("완료된 회의 (히스토리)",done,"완료된 회의가 아직 없습니다.");
+  return head+sec("예정된 회의",sched,"예정된 회의가 없습니다.")+meetingHistoryTimeline(done);
+}
+function mts(dateStr){ const p=(dateStr||"").split("-").map(Number); return p.length===3?new Date(p[0],p[1]-1,p[2]).getTime():Date.parse(dateStr); }
+function meetingHistoryTimeline(done){
+  const g=session.mgantt;
+  const toolbar=`<div class="g-toolbar">
+    <div class="g-seg">${[["week","주"],["month","월"],["quarter","분기"],["all","전체"]].map(([k,l])=>`<button data-act="g-range" data-gt="m" data-range="${k}" class="${g.range===k?"on":""}">${l}</button>`).join("")}</div>
+    ${g.range!=="all"?`<span class="g-nav"><button data-act="g-nav" data-gt="m" data-dir="-1">‹</button><b>${ganttLabel(ganttWindow(g),g)}</b><button data-act="g-nav" data-gt="m" data-dir="1">›</button></span>`:`<span class="g-nav"><b>전체 기간</b></span>`}
+    <select class="g-sel" id="mg_group"><option value="none" ${g.group==="none"?"selected":""}>그룹: 없음</option><option value="owner" ${g.group==="owner"?"selected":""}>그룹: 작성자별</option></select>
+    <span style="flex:1"></span><span class="tag">완료 ${done.length}건</span></div>`;
+  const headWrap=html=>`<div class="card"><div class="card-h"><h3>완료된 회의 (히스토리)</h3></div><div class="card-b">${toolbar}${html}</div></div>`;
+  if(!done.length) return headWrap(`<div class="hint">완료된 회의가 아직 없습니다.</div>`);
+  const day=86400000;
+  let win=ganttWindow(g);
+  if(!win){ const ds=done.map(m=>mts(m.date)); win={start:Math.min(...ds),end:Math.max(...ds)+day,range:"all",ticks:"month"}; }
+  const span=Math.max(day,win.end-win.start);
+  const inWin=done.filter(m=>{ const t=mts(m.date); return t>=win.start && t<win.end; }).sort((a,b)=>mts(a.date)-mts(b.date));
+  const today=(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})();
+  const todayPct=(today>=win.start&&today<win.end)?((today-win.start)/span)*100:null;
+  const ticks=ganttTicks(win);
+  const tickEls=ticks.map(tk=>`<div class="tick" style="left:${tk.pct}%"></div>`).join("");
+  const rowHtml=m=>{ const t=mts(m.date), pct=((t-win.start)/span)*100;
+    return `<div class="g-row"><div class="lbl" data-act="open-meeting" data-id="${m.id}"><div class="t">${esc(m.title||m.agenda.split("\n")[0].slice(0,40))}</div><div class="s">${esc(Store.user(m.createdBy)?.name||'')}</div></div>
+      <div class="g-track">${tickEls}${todayPct!=null?`<div class="g-today" style="left:${todayPct}%"></div>`:""}
+        <div class="mg-pill" data-act="open-meeting" data-id="${m.id}" style="left:${Math.max(2,Math.min(98,pct))}%" title="${esc(m.title||'')} · ${mdisp(m.date)}">${mdisp(m.date).slice(5)}</div></div></div>`; };
+  const groups={}; (g.group==="owner"?inWin:inWin).forEach(m=>{ const k=g.group==="owner"?(Store.user(m.createdBy)?.name||"미지정"):""; (groups[k]=groups[k]||[]).push(m); });
+  const head2=`<div class="g-head"><div class="lbl">회의</div><div class="scale" style="position:relative;flex:1;height:14px">${ticks.map(tk=>`<span style="position:absolute;left:${tk.pct}%;transform:translateX(2px)">${tk.label}</span>`).join("")}</div></div>`;
+  const body=inWin.length?Object.keys(groups).sort().map(k=>`${g.group!=="none"?`<div class="g-grp">${esc(k)} <span style="font-weight:500;opacity:.7">${groups[k].length}</span></div>`:""}${groups[k].map(rowHtml).join("")}`).join(""):`<div class="g-empty-range">이 기간에 완료된 회의가 없습니다. 기간을 넓히거나 이동해 보세요.</div>`;
+  return headWrap(`<div class="gantt-wrap"><div class="gantt">${head2}${body}</div></div>`);
 }
 function viewMeeting(id){
   const m=Store.meeting(id); if(!m) return ph("회의","")+`<div class="card"><div class="card-b">${C.empty("📋","회의를 찾을 수 없습니다","목록에서 다시 선택해 주세요.")}</div></div>`;
@@ -2653,6 +2683,7 @@ function render(){
   if(v==="access") wireAccessFilters();
   if(v==="cleanup") wireOrphanTools();
   if(v==="gantt") wireGantt();
+  if(v==="meetings") wireGantt();
   // 필터 입력 연결 (업무 뷰)
   if(v==="tasks"){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
@@ -2759,7 +2790,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","clear-filter","zoom","doc-view","download-asset","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","clear-filter","zoom","doc-view","download-asset","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
