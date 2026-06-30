@@ -228,6 +228,18 @@
   .alist img.prev-media{width:100%;height:170px;object-fit:contain;max-height:none;margin:0;cursor:zoom-in;background:var(--surface-2)}
   .cardnews-cover{position:relative;cursor:zoom-in}
   .cardnews-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;pointer-events:none}
+  .dnd-list{margin-top:4px;display:flex;flex-direction:column;gap:6px}
+  .dnd-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--surface)}
+  .dnd-item.dragging{opacity:.45}
+  .dnd-item.dragover{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+  .dnd-handle{cursor:grab;color:var(--muted);font-size:15px;user-select:none}
+  .dnd-thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;background:var(--surface-2);flex:none}
+  .dnd-ic{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border-radius:6px;flex:none}
+  .dnd-name{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dnd-ord{font-family:var(--fm);font-size:11px;color:var(--muted)}
+  .dnd-btns{display:flex;gap:3px;flex:none}
+  .dnd-btns button{width:24px;height:24px;border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;cursor:pointer;font-size:11px;color:var(--ink-soft);padding:0}
+  .dnd-rm{color:var(--warn)!important}
   .alist .prev-name{margin-top:6px}
   .brep-list{display:flex;flex-direction:column;gap:10px}
   .brep-row{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:8px}
@@ -545,7 +557,7 @@ const Store = (()=>{
     brand:id=>db.brands.find(b=>b.id===id),
     campaign:id=>db.campaigns.find(c=>c.id===id),
     task:id=>db.tasks.find(t=>t.id===id),
-    assetsOf:tid=>db.assets.filter(a=>a.taskId===tid),
+    assetsOf:tid=>db.assets.filter(a=>a.taskId===tid).sort((a,b)=>a.createdAt-b.createdAt),
     versionsOf:aid=>db.versions.filter(v=>v.assetId===aid).sort((a,b)=>b.no-a.no),
     reviewsOf:tid=>db.reviews.filter(r=>r.taskId===tid).sort((a,b)=>b.createdAt-a.createdAt),
     perfOf:tid=>db.performance.find(p=>p.taskId===tid),
@@ -1747,6 +1759,28 @@ function openMembersModal(tid){
       toast("공동 담당자 저장됨"); render();
     }});
 }
+let asFiles=[], asFileUrls=[];   // 산출물 등록 시 선택 파일(드래그 재정렬용)
+function renderAsFileList(){
+  asFileUrls.forEach(u=>URL.revokeObjectURL(u)); asFileUrls=[];
+  const box=document.getElementById("as_filelist"); if(!box) return;
+  if(!asFiles.length){ box.innerHTML=""; return; }
+  box.innerHTML=`<div class="hint" style="margin:8px 0 6px">드래그(또는 ▲▼)로 순서를 바꾸세요 · 등록 시 이 순서대로 저장됩니다</div>`+
+    asFiles.map((f,i)=>{ const isImg=(f.type||"").startsWith("image/"); let thumb;
+      if(isImg){ const u=URL.createObjectURL(f); asFileUrls.push(u); thumb=`<img src="${u}" class="dnd-thumb" alt="">`; }
+      else thumb=`<span class="dnd-ic">${(f.type||"").startsWith("video/")?"▶":/\.pdf$/i.test(f.name)?"📕":"📎"}</span>`;
+      return `<div class="dnd-item" draggable="true" data-i="${i}"><span class="dnd-handle" title="드래그">⠿</span>${thumb}<span class="dnd-name">${esc(f.name)}</span><span class="dnd-ord">${i+1}</span><span class="dnd-btns"><button type="button" class="dnd-mv" data-mv="up" data-i="${i}">▲</button><button type="button" class="dnd-mv" data-mv="dn" data-i="${i}">▼</button><button type="button" class="dnd-rm" data-i="${i}">✕</button></span></div>`;
+    }).join("");
+  let from=null;
+  box.querySelectorAll(".dnd-item").forEach(el=>{
+    el.addEventListener("dragstart",e=>{ from=+el.dataset.i; el.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; });
+    el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); box.querySelectorAll(".dnd-item").forEach(x=>x.classList.remove("dragover")); });
+    el.addEventListener("dragover",e=>{ e.preventDefault(); el.classList.add("dragover"); });
+    el.addEventListener("dragleave",()=>el.classList.remove("dragover"));
+    el.addEventListener("drop",e=>{ e.preventDefault(); const to=+el.dataset.i; if(from!=null&&from!==to){ const [m]=asFiles.splice(from,1); asFiles.splice(to,0,m); renderAsFileList(); } });
+  });
+  box.querySelectorAll(".dnd-mv").forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, j=i+(b.dataset.mv==="up"?-1:1); if(j<0||j>=asFiles.length)return; [asFiles[i],asFiles[j]]=[asFiles[j],asFiles[i]]; renderAsFileList(); });
+  box.querySelectorAll(".dnd-rm").forEach(b=>b.onclick=()=>{ asFiles.splice(+b.dataset.i,1); renderAsFileList(); });
+}
 function assetFormBody(){
   return `
     <label class="fld"><span class="lab">유형</span><select id="as_type">${Object.entries(ASSET_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select></label>
@@ -1756,7 +1790,7 @@ function assetFormBody(){
       <label class="chip"><input type="radio" name="assrc" value="file" checked><span>파일 업로드</span></label>
       <label class="chip"><input type="radio" name="assrc" value="link"><span>URL 링크</span></label>
       <label class="chip"><input type="radio" name="assrc" value="text"><span>텍스트</span></label></div></label>
-    <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)<br><b>카드뉴스</b> 유형은 선택한 이미지들이 <b>업로드 순서 그대로</b> 하나로 묶입니다.</div></div>
+    <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)<br>여러 개를 올리면 <b>PC 파일명 순서</b>로 정렬되며(아래에서 드래그로 변경 가능), <b>그 순서대로 등록·표시</b>됩니다. <b>카드뉴스</b>는 같은 순서로 한 묶음이 됩니다.</div><div id="as_filelist" class="dnd-list"></div></div>
     <label class="fld" id="as_linkWrap" style="display:none"><span class="lab">파일 링크 <span class="hint">한 줄에 하나씩 · 최대 10개</span></span><textarea id="as_links" rows="4" placeholder="https://drive.google.com/...&#10;https://youtu.be/...&#10;https://..."></textarea></label>
     <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="예) 광고 카피, 콘텐츠 본문, 게시물 문구 등을 입력하세요"></textarea></label>`;
 }
@@ -1766,6 +1800,8 @@ function wireAssetForm(){
     document.getElementById("as_linkWrap").style.display=v==="link"?"block":"none";
     document.getElementById("as_bodyWrap").style.display=v==="text"?"block":"none"; };
   document.querySelectorAll('#as_src input').forEach(r=>r.onchange=upd); upd();
+  const fi=document.getElementById("as_file");
+  if(fi && document.getElementById("as_filelist")) fi.onchange=()=>{ asFiles=[...fi.files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:"base"})); renderAsFileList(); };
 }
 async function makeWebpThumb(file, maxDim=720, q=0.72){
   if(!(file.type||"").startsWith("image/")) return null;
@@ -1817,7 +1853,7 @@ async function collectAttachment(){ // 단일 (버전용)
 }
 async function collectFiles(){ // 복수 (산출물 등록용)
   const mode=asSrcMode();
-  if(mode==="file"){ const files=[...document.getElementById("as_file").files];
+  if(mode==="file"){ const files=asFiles.length?asFiles.slice():[...document.getElementById("as_file").files];
     if(!files.length) return [];
     const out=[]; for(const f of files){ const r=await uploadOne(f); if(r) out.push(r); }
     return out;
@@ -1830,6 +1866,7 @@ async function collectFiles(){ // 복수 (산출물 등록용)
   return links.map(link=>({fileData:null,fileName:null,fileMime:null,filePath:null,link,body:""}));
 }
 function openAssetModal(taskId){
+  asFiles=[]; asFileUrls.forEach(u=>URL.revokeObjectURL(u)); asFileUrls=[];
   Modal.open({title:"산출물 등록",okLabel:"등록",body:assetFormBody(),submit:async()=>{
     const atts=await collectFiles();
     if(!atts.length){toast("파일·링크·텍스트 중 하나를 입력하세요");return false;}
