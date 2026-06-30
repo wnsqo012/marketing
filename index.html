@@ -746,7 +746,7 @@ const AiService=(()=>{
 {"summary":["",""],"decisions":["",""],"actions":["",""],"directions":["",""]}`;
         const usr=`[회의명]${meeting.title||"-"}\n[일자]${meeting.date}\n[안건]${meeting.agenda}\n[참석자]${meeting.attendees}\n[회의록]\n${text}`;
         return await call(sys,usr);
-      }catch(e){ toast("AI 요약 실패 — 시뮬레이터로 대체"); }
+      }catch(e){ console.error("[meetingSummary]",e); toast("AI 요약 실패: "+String(e&&e.message||e).slice(0,90)); }
     }
     await wait(800);
     const lines=text.split(/\n+/).map(s=>s.replace(/^[-*•\d.\s]+/,"").trim()).filter(Boolean);
