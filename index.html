@@ -432,6 +432,7 @@ let ASSET_THUMB_OK=false;   // thumb_path 컬럼 존재 시 true (loadAll에서 
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_EXT_OK=false;   // 회의명(title)+회의댓글 확장 적용 시 true
+let APP_SETTINGS_OK=false;  // app_settings(공용 AI 키) 테이블 존재 시 true
 let ORPHAN={status:"idle",all:[],orphans:[],refCount:0,totalCount:0,reclaim:0};
 const iso=ms=>new Date(ms).toISOString();
 const Maps={
@@ -528,6 +529,7 @@ const Store = (()=>{
     try{ db.taskMembers=await get("task_members",Maps.taskMember.from); TASK_MEMBERS_OK=true; }catch(e){ db.taskMembers=[]; TASK_MEMBERS_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
     try{ db.meetingComments=await get("meeting_comments",Maps.meetingComment.from); MEETING_EXT_OK=true; }catch(e){ db.meetingComments=[]; MEETING_EXT_OK=false; }
+    try{ const {data}=await sb.from("app_settings").select("value").eq("key","ai").maybeSingle(); if(data&&data.value){ AI.key=data.value.key||""; AI.model=data.value.model||AI.model; AI.useReal=!!data.value.useReal; } APP_SETTINGS_OK=true; }catch(e){ APP_SETTINGS_OK=false; }
   }
   return {
     init(){ db=blank(); },
@@ -622,6 +624,11 @@ const Store = (()=>{
     // 활동 로그: 낙관적 삽입 + 실패 시 롤백(보조 데이터라 조용히 처리)
     log(actorId,taskId,type,message){ const a={id:uid(),ts:Date.now(),actorId,taskId,type,message}; optimisticInsert(db.activity,a,"activity",Maps.activity.to); },
     accessLogsAll:()=>db.accessLogs.slice(),
+    async saveAi(cfg){
+      try{ const {error}=await sb.from("app_settings").upsert({key:"ai",value:cfg,updated_by:me().id,updated_at:iso(Date.now())},{onConflict:"key"});
+        if(error){ console.warn(error.message); return false; } return true; }
+      catch(e){ console.warn(e); return false; }
+    },
     async logAccess(event,userId){
       const uidv = userId || (me()&&me().id);
       if(!uidv) return;
@@ -731,7 +738,26 @@ const AiService=(()=>{
     }
     await wait(900); return simRetro(task,perf);
   }
-  return {checks,execReport,retro,live};
+  async function meetingSummary(meeting){
+    const text=(meeting.minutes||"").trim();
+    if(live()){
+      try{
+        const sys=`너는 회의 기록 보조자다. 회의록을 바탕으로 (1) 핵심 요약(3~5개 불릿), (2) 결정 사항, (3) 후속 액션(담당/기한 추정 포함 가능), (4) 추가로 논의·검토하면 좋은 방향성 제안 2~3가지를 작성한다. 한국어. JSON만 출력:
+{"summary":["",""],"decisions":["",""],"actions":["",""],"directions":["",""]}`;
+        const usr=`[회의명]${meeting.title||"-"}\n[일자]${meeting.date}\n[안건]${meeting.agenda}\n[참석자]${meeting.attendees}\n[회의록]\n${text}`;
+        return await call(sys,usr);
+      }catch(e){ toast("AI 요약 실패 — 시뮬레이터로 대체"); }
+    }
+    await wait(800);
+    const lines=text.split(/\n+/).map(s=>s.replace(/^[-*•\d.\s]+/,"").trim()).filter(Boolean);
+    return {
+      summary: lines.slice(0,4).length?lines.slice(0,4):["회의록 내용이 짧아 요약할 내용이 부족합니다."],
+      decisions: lines.filter(l=>/확정|결정|승인|채택/.test(l)).slice(0,3),
+      actions: lines.filter(l=>/까지|담당|진행|준비|작성|공유|제작/.test(l)).slice(0,4),
+      directions: ["다음 회의에서 후속 액션의 진행 상황을 점검하세요.","결정되지 않은 안건은 담당자를 지정해 마감일을 정하면 좋습니다."],
+    };
+  }
+  return {checks,execReport,retro,meetingSummary,live};
 })();
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -1541,6 +1567,18 @@ const Actions={
     const c={id:Store.uid(),meetingId:mid,authorId:me().id,body,fileData:att?att.fileData:null,fileName:att?att.fileName:null,fileMime:att?att.fileMime:null,createdAt:Date.now()};
     if(await Store.addMComment(c)){ toast("등록되었습니다"); render(); } else toast("등록 실패 — 다시 시도하세요"); },
   async "del-meeting-comment"(el){ if(await Store.delMComment(el.dataset.id)){ toast("삭제했습니다"); render(); } },
+  async "ai-meeting"(el){ const m=Store.meeting(el.dataset.id); if(!m)return;
+    const cur=(document.getElementById("mt_minutes")?document.getElementById("mt_minutes").value:m.minutes||"").trim();
+    if(!cur){ toast("회의록을 먼저 작성하세요"); return; }
+    m._aiLoading=true; m._ai=null; render();
+    try{ m._ai=await AiService.meetingSummary({...m,minutes:cur}); }
+    catch(e){ console.error(e); toast("AI 요약에 실패했습니다"); }
+    m._aiLoading=false; render(); },
+  async "ai-meeting-apply"(el){ const m=Store.meeting(el.dataset.id); if(!m||!m._ai)return;
+    const cur=(document.getElementById("mt_minutes")?document.getElementById("mt_minutes").value:m.minutes||"");
+    const merged=(cur.trim()?cur.trim()+"\n\n":"")+"── AI 요약·제안 ──\n"+aiMeetingText(m._ai);
+    if(await Store.update("meetings",m.id,{minutes:merged},()=>{m.minutes=merged;})){ m._ai=null; toast("회의록에 반영했습니다"); render(); } else toast("반영 실패"); },
+  "ai-meeting-clear"(el){ const m=Store.meeting(el.dataset.id); if(m){ m._ai=null; render(); } },
   "open-meeting"(el){ session.route={view:"meeting",id:el.dataset.id}; render(); },
   async "save-minutes"(el){ const m=Store.meeting(el.dataset.id); if(!m)return; const mins=val("mt_minutes");
     if(await Store.update("meetings",m.id,{minutes:mins||null},()=>{m.minutes=mins;})) toast("회의록을 저장했습니다"); else toast("저장 실패"); },
@@ -2584,7 +2622,7 @@ function viewMeeting(id){
     <p><span style="font-family:var(--fm)">${mdisp(m.date)}</span> · 작성 ${esc(Store.user(m.createdBy)?.name||"-")}${done&&m.doneAt?` · 완료 ${fmtDT(m.doneAt)}`:""}</p></div>
     ${canDel?`<div class="right"><button class="btn btn-warn btn-sm" data-act="del-meeting" data-id="${m.id}">삭제</button></div>`:""}</div>
   <div class="split"><div>
-    <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>회의록</h3></div><div class="card-b">${minutesBlock}</div></div>
+    <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>회의록</h3></div><div class="card-b">${minutesBlock}${canWrite?aiMeetingPanel(m):""}</div></div>
     ${cmtSection}
   </div><div>
     <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>안건</h3></div><div class="card-b" style="white-space:pre-wrap">${esc(m.agenda)}</div></div>
@@ -2621,6 +2659,23 @@ function openMeetingTitleModal(id){
       if(await Store.update("meetings",id,{title:t},()=>{m.title=t;})){ toast("회의명이 변경되었습니다"); render(); } else { toast("저장 실패"); return false; } }});
 }
 
+function aiMeetingText(ai){
+  const sec=(t,arr)=>arr&&arr.length?`【${t}】\n`+arr.map(x=>"- "+x).join("\n")+"\n":"";
+  return (sec("핵심 요약",ai.summary)+sec("결정 사항",ai.decisions)+sec("후속 액션",ai.actions)+sec("추가 방향성 제안",ai.directions)).trim();
+}
+function aiMeetingPanel(m){
+  const btn=`<button class="btn btn-ghost btn-sm" data-act="ai-meeting" data-id="${m.id}">🤖 AI 요약·방향 제안</button>`;
+  let panel="";
+  if(m._aiLoading) panel=`<div class="callout" style="margin-top:10px">AI가 회의록을 분석 중입니다…</div>`;
+  else if(m._ai){ const ai=m._ai;
+    const block=(t,arr)=>arr&&arr.length?`<div style="margin-bottom:8px"><div style="font-weight:700;font-size:12px;color:var(--primary);margin-bottom:3px">${t}</div><ul style="margin:0;padding-left:18px;font-size:13px">${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:"";
+    panel=`<div class="callout" style="margin-top:12px">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>🤖 AI 제안 ${AiService.live()?'<span class="tag">openai</span>':'<span class="tag">시뮬레이터</span>'}</b></div>
+      ${block("핵심 요약",ai.summary)}${block("결정 사항",ai.decisions)}${block("후속 액션",ai.actions)}${block("추가 방향성 제안",ai.directions)}
+      <div class="btn-row" style="margin-top:8px"><button class="btn btn-primary btn-sm" data-act="ai-meeting-apply" data-id="${m.id}">회의록에 반영</button><button class="btn btn-ghost btn-sm" data-act="ai-meeting-clear" data-id="${m.id}">닫기</button></div></div>`;
+  }
+  return `<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">${btn}${panel}</div>`;
+}
 function navConfig(){
   const role=me().role;
   if(role==="partner") return [{view:"generator",ic:"🎨",label:"생성기"}];
@@ -2773,16 +2828,28 @@ function openPwChange(){
     }});
 }
 function openAiCfg(){
-  Modal.open({title:"AI 연동 설정",okLabel:"저장",body:`
+  const isMgr=me()&&me().role==="manager";
+  if(!APP_SETTINGS_OK && isMgr){ /* SQL 미적용 시에도 입력은 가능하나 저장이 안 됨 */ }
+  if(!isMgr){
+    Modal.open({title:"AI 연동 (팀 공용)",okLabel:"확인",body:`
+      <div class="callout" style="margin-bottom:6px"><b>현재 상태:</b> ${AiService.live()?`OpenAI 연결됨 · ${esc(AI.model)}`:"AI 시뮬레이터"}</div>
+      <div class="hint">AI 키는 <b>팀장이 설정</b>하며, 로그인하면 팀 공용으로 자동 적용됩니다. 실무자는 별도 입력이 필요 없습니다.</div>`,
+      submit(){ return; }});
+    return;
+  }
+  Modal.open({title:"AI 연동 설정 (팀 공용)",okLabel:"저장",body:`
     <label class="fld"><span class="lab">OpenAI API 키 <span class="hint">sk- 로 시작</span></span><input type="password" id="ai_key" placeholder="sk-..." value="${esc(AI.key)}"></label>
     <label class="fld"><span class="lab">모델</span><select id="ai_model">
       <option value="gpt-4o-mini" ${AI.model==="gpt-4o-mini"?"selected":""}>gpt-4o-mini (빠름·저렴)</option>
       <option value="gpt-4o" ${AI.model==="gpt-4o"?"selected":""}>gpt-4o (품질 우선)</option></select></label>
     <label class="chip" style="display:block;margin-bottom:14px"><input type="checkbox" id="ai_real" ${AI.useReal?"checked":""} style="position:static;opacity:1;width:auto;margin-right:8px;vertical-align:middle"><span style="border:0;padding:0;color:var(--ink);font-weight:600">실제 OpenAI 호출 사용</span></label>
-    <div class="warnbox">⚠ 키는 메모리에만 저장되며 새로고침 시 사라집니다. 브라우저 직접 호출은 키 노출 위험이 있어 <b>본인 키로 데모용</b>으로만 쓰세요. 실서비스는 Make/서버 경유로 키를 숨기세요. (미리보기에서 호출이 막히면 파일을 내려받아 직접 여세요.)</div>`,
-    submit(){
-      AI.key=val("ai_key").trim(); AI.model=val("ai_model"); AI.useReal=document.getElementById("ai_real").checked;
-      if(AI.useReal&&!AI.key){AI.useReal=false;toast("키가 없어 시뮬레이터로 유지");} else toast(AI.useReal?"실제 OpenAI 호출 켜짐":"AI 시뮬레이터 모드");
+    <div class="warnbox">팀 공용으로 저장되어 <b>로그인한 팀장·실무자 모두 자동 사용</b>합니다. 로그인한 팀원은 개발자도구로 키를 볼 수 있으므로, <b>OpenAI 대시보드에서 월 사용 한도(usage limit)를 반드시 설정</b>하세요. (뷰어·파트너는 키에 접근하지 못합니다.)</div>`,
+    submit:async()=>{
+      const key=val("ai_key").trim(), model=val("ai_model"), useReal=document.getElementById("ai_real").checked&&!!key;
+      const ok=await Store.saveAi({key,model,useReal});
+      if(!ok){ toast("저장 실패 — supabase_app_settings.sql 실행 여부를 확인하세요"); return false; }
+      AI.key=key; AI.model=model; AI.useReal=useReal;
+      toast(useReal?"팀 공용 OpenAI 호출이 켜졌습니다":"저장됨 (시뮬레이터)");
       render();
     }});
 }
