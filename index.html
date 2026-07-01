@@ -3020,7 +3020,10 @@ const InApp={
   setSound(v){ try{ localStorage.setItem("notifSound", v?"1":"0"); }catch(e){} },
   mine(){ return Store.notifsAll().filter(n=>n.recipientId===me().id && (n.channel==="email"||!n.channel)); }, // 이벤트당 1건
   unread(){ const ls=this.lastSeen(); return this.mine().filter(n=>n.sentAt>ls).length; },
-  beep(){ if(!this.soundOn()) return; try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(); const o=c.createOscillator(), g=c.createGain(); o.connect(g); g.connect(c.destination); o.type="sine"; o.frequency.value=660; g.gain.setValueAtTime(.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(.15,c.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.35); o.start(); o.stop(c.currentTime+.36); setTimeout(()=>{try{c.close();}catch(e){}},600); }catch(e){} }
+  beep(){ if(!this.soundOn()) return; try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(); const now=c.currentTime;
+      const tone=(freq,start,dur,peak)=>{ const o=c.createOscillator(),g=c.createGain(); o.connect(g); g.connect(c.destination); o.type="triangle"; o.frequency.value=freq; g.gain.setValueAtTime(.0001,now+start); g.gain.exponentialRampToValueAtTime(peak,now+start+.02); g.gain.exponentialRampToValueAtTime(.0001,now+start+dur); o.start(now+start); o.stop(now+start+dur+.02); };
+      tone(880,0,.30,.6); tone(1174,.16,.36,.6);   // 띵-동 (두 음, 크게)
+      setTimeout(()=>{try{c.close();}catch(e){}},1000); }catch(e){} }
 };
 function updateNotifChrome(){
   const badge=document.getElementById("notifBadge"); const n=me()?InApp.unread():0;
@@ -3040,7 +3043,7 @@ function renderNotifPanel(){ const p=document.getElementById("notifPanel"); if(!
       <div class="nrow-d">${fmtDT(n.sentAt)}</div></div>`; }).join("")
     :`<div class="nrow-empty">받은 알림이 없습니다.</div>`;
   p.innerHTML=`<div class="np-h"><b>알림</b><label class="np-snd"><input type="checkbox" id="np_sound" ${InApp.soundOn()?"checked":""}> 소리</label></div><div class="np-list">${rows}</div>`;
-  const sc=document.getElementById("np_sound"); if(sc) sc.onchange=()=>InApp.setSound(sc.checked);
+  const sc=document.getElementById("np_sound"); if(sc) sc.onchange=()=>{ InApp.setSound(sc.checked); if(sc.checked) InApp.beep(); };
 }
 const PCNotify={
   supported(){ return typeof Notification!=="undefined"; },
