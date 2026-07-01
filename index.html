@@ -60,6 +60,19 @@
   .ai-flag{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.25);color:#cfe0de}
   .ai-flag.live{background:var(--brass);border-color:var(--brass);color:#fff}
   .hbtn{appearance:none;border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe0de;font-size:11.5px;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:var(--fm)}
+  #notifBell{position:relative;padding:6px 10px}
+  .nbadge{position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;line-height:17px;text-align:center;border-radius:9px;padding:0 4px;font-family:var(--fm)}
+  .notifpanel{position:absolute;top:40px;right:0;width:320px;max-height:60vh;overflow:auto;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.24);z-index:60}
+  .np-h{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px}
+  .np-snd{font-size:11.5px;color:var(--ink-soft);display:flex;align-items:center;gap:5px;cursor:pointer}
+  .np-list{display:flex;flex-direction:column}
+  .nrow{padding:10px 13px;border-bottom:1px solid var(--line);cursor:pointer}
+  .nrow:hover{background:var(--surface-2)}
+  .nrow.new{background:#eef5f4}
+  .nrow-t{font-size:12.5px;font-weight:700;color:var(--primary)}
+  .nrow-b{font-size:12.5px;margin-top:2px;color:var(--ink)}
+  .nrow-d{font-size:10.5px;color:var(--muted);font-family:var(--fm);margin-top:3px}
+  .nrow-empty{padding:20px;text-align:center;color:var(--muted);font-size:12.5px}
   .hbtn:hover{border-color:#fff;color:#fff}
 
   .layout{display:grid;grid-template-columns:212px minmax(0,1fr);align-items:start}
@@ -384,7 +397,10 @@
     <div class="spacer"></div>
     <span class="ai-flag" id="aiFlag">AI 시뮬레이터</span>
     <span class="who" id="who"></span>
-    <button class="hbtn" id="pcNotifyBtn" style="display:none"><span class="hi">🔔</span><span class="hl"> PC 알림 켜기</span></button>
+    <div class="bellwrap" style="position:relative">
+      <button class="hbtn" id="notifBell"><span class="hi">🔔</span><span class="nbadge" id="notifBadge" style="display:none">0</span></button>
+      <div class="notifpanel" id="notifPanel" style="display:none"></div>
+    </div>
     <button class="hbtn" id="aiCfgBtn"><span class="hi">⚙</span><span class="hl"> AI</span></button>
     <button class="hbtn" id="pwBtn"><span class="hi">🔑</span><span class="hl"> 비밀번호 변경</span></button>
     <button class="hbtn" id="logoutBtn"><span class="hi">⎋</span><span class="hl"> 로그아웃</span></button>
@@ -1633,6 +1649,7 @@ const Actions={
     if(await Store.update("meetings",m.id,{minutes:merged},()=>{m.minutes=merged;})){ m._ai=null; toast("회의록에 반영했습니다"); render(); } else toast("반영 실패"); },
   "ai-meeting-clear"(el){ const m=Store.meeting(el.dataset.id); if(m){ m._ai=null; render(); } },
   "open-meeting"(el){ session.route={view:"meeting",id:el.dataset.id}; render(); },
+  "open-notif"(el){ const tid=el.dataset.task; const p=document.getElementById("notifPanel"); if(p)p.style.display="none"; if(tid){ session.route={view:"task",id:tid}; render(); } },
   async "save-minutes"(el){ const m=Store.meeting(el.dataset.id); if(!m)return; const mins=val("mt_minutes");
     if(await Store.update("meetings",m.id,{minutes:mins||null},()=>{m.minutes=mins;})) toast("회의록을 저장했습니다"); else toast("저장 실패"); },
   async "complete-meeting"(el){ const m=Store.meeting(el.dataset.id); if(!m)return; const mins=(val("mt_minutes")||"").trim();
@@ -2865,7 +2882,7 @@ function renderBar(){
   const u=me();
   document.getElementById("who").innerHTML=`<b>${esc(u.name)}</b> · ${({member:"실무자",manager:"팀장",executive:"대표",viewer:"뷰어",partner:"파트너"})[u.role]||u.role}`;
   const f=document.getElementById("aiFlag"); f.textContent=AiService.live()?((AI.mode==="server"?"OpenAI(서버) · ":"OpenAI · ")+AI.model):"AI 시뮬레이터"; f.classList.toggle("live",AiService.live());
-  refreshPcNotifyBtn();
+  updateNotifChrome();
 }
 function render(){
   if(me() && me().role==="partner" && session.route.view!=="generator") session.route={view:"generator"};
@@ -2953,15 +2970,47 @@ async function afterAuth(){
 // ===== Supabase Realtime: 업무 변경 시 새로고침 없이 화면/카운트 갱신 =====
 // ===== PC 브라우저 알림(우측 하단 팝업) =====
 const NOTIF_LABEL={task_created:"새 업무",task_created_me:"내 업무 등록",review_requested:"검토 요청",review_resubmitted:"재검토 요청",review_submitted:"검토 요청 접수",review_resubmitted_me:"재검토 접수",approved:"승인됨",rejected:"반려됨",exec_decision:"대표 결정",post_created:"새 공지·글",comment_added:"새 댓글",due_soon:"마감 임박",overdue:"마감 초과"};
+function notifBodyText(r){ const t=r.task_id?Store.task(r.task_id):null;
+  return (t?`[${t.title}] `:"")+(r.type==="approved"?"승인되었습니다":r.type==="rejected"?"반려되었습니다":(r.type==="review_requested"||r.type==="review_resubmitted")?"검토가 필요합니다":r.type==="comment_added"?"새 댓글이 있습니다":r.type==="post_created"?"새 글이 등록되었습니다":r.type==="task_created"?"새 업무가 등록되었습니다":"확인해 주세요"); }
+// ===== 인앱 알림센터 (권한 불필요) =====
+const InApp={
+  key(){ return "notifSeen:"+(me()?me().id:"x"); },
+  lastSeen(){ try{ return +localStorage.getItem(this.key())||0; }catch(e){ return 0; } },
+  markRead(){ try{ localStorage.setItem(this.key(), String(Date.now())); }catch(e){} updateNotifChrome(); },
+  soundOn(){ try{ return localStorage.getItem("notifSound")!=="0"; }catch(e){ return true; } },
+  setSound(v){ try{ localStorage.setItem("notifSound", v?"1":"0"); }catch(e){} },
+  mine(){ return Store.notifsAll().filter(n=>n.recipientId===me().id && (n.channel==="email"||!n.channel)); }, // 이벤트당 1건
+  unread(){ const ls=this.lastSeen(); return this.mine().filter(n=>n.sentAt>ls).length; },
+  beep(){ if(!this.soundOn()) return; try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(); const o=c.createOscillator(), g=c.createGain(); o.connect(g); g.connect(c.destination); o.type="sine"; o.frequency.value=660; g.gain.setValueAtTime(.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(.15,c.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.35); o.start(); o.stop(c.currentTime+.36); setTimeout(()=>{try{c.close();}catch(e){}},600); }catch(e){} }
+};
+function updateNotifChrome(){
+  const badge=document.getElementById("notifBadge"); const n=me()?InApp.unread():0;
+  if(badge){ if(n>0){ badge.textContent=n>99?"99+":String(n); badge.style.display=""; } else badge.style.display="none"; }
+  try{ document.title=(n>0?`(${n}) `:"")+"마케팅 운영 플랫폼"; }catch(e){}
+}
+function toggleNotifPanel(){ const p=document.getElementById("notifPanel"); if(!p) return;
+  if(p.style.display==="none"){ renderNotifPanel(); p.style.display="block"; InApp.markRead(); }
+  else p.style.display="none";
+}
+function renderNotifPanel(){ const p=document.getElementById("notifPanel"); if(!p) return;
+  const list=InApp.mine().slice(0,30); const ls=InApp.lastSeen();
+  const rows=list.length?list.map(n=>{ const isNew=n.sentAt>ls;
+    return `<div class="nrow${isNew?" new":""}" data-act="open-notif" data-id="${n.id}" data-task="${n.taskId||""}">
+      <div class="nrow-t">${esc(NOTIF_LABEL[n.type]||"알림")}</div>
+      <div class="nrow-b">${esc(notifBodyText({task_id:n.taskId,type:n.type}))}</div>
+      <div class="nrow-d">${fmtDT(n.sentAt)}</div></div>`; }).join("")
+    :`<div class="nrow-empty">받은 알림이 없습니다.</div>`;
+  p.innerHTML=`<div class="np-h"><b>알림</b><label class="np-snd"><input type="checkbox" id="np_sound" ${InApp.soundOn()?"checked":""}> 소리</label></div><div class="np-list">${rows}</div>`;
+  const sc=document.getElementById("np_sound"); if(sc) sc.onchange=()=>InApp.setSound(sc.checked);
+}
 const PCNotify={
   supported(){ return typeof Notification!=="undefined"; },
   granted(){ return this.supported() && Notification.permission==="granted"; },
-  async request(){ if(!this.supported()) return "unsupported"; try{ return await Notification.requestPermission(); }catch(e){ return "denied"; } },
   show(title, body, taskId){ if(!this.granted()) return;
-    try{ const n=new Notification(title,{body:body||"",tag:taskId||undefined,icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2327474f'/%3E%3Ctext x='32' y='42' font-size='30' text-anchor='middle' fill='white' font-family='sans-serif'%3Eops%3C/text%3E%3C/svg%3E"});
+    try{ const n=new Notification(title,{body:body||"",tag:taskId||undefined});
       n.onclick=()=>{ try{ window.focus(); }catch(e){} if(taskId){ session.route={view:"task",id:taskId}; render(); } n.close(); };
       setTimeout(()=>{ try{n.close();}catch(e){} }, 12000);
-    }catch(e){ console.warn("PCNotify:",e); }
+    }catch(e){}
   }
 };
 let rtChannel=null, rtTimer=null;
@@ -2974,10 +3023,11 @@ function startRealtime(){
         const r=payload&&payload.new; if(!r||!session.user) return;
         if(r.recipient_id!==me().id) return;          // 본인 수신분만
         if(r.channel && r.channel!=="email") return;  // 이벤트당 1회(email 로그 기준)
-        const t=r.task_id?Store.task(r.task_id):null;
-        const title=NOTIF_LABEL[r.type]||"새 알림";
-        const body=(t?`[${t.title}] `:"")+(r.type==="approved"?"승인되었습니다":r.type==="rejected"?"반려되었습니다":r.type==="review_requested"||r.type==="review_resubmitted"?"검토가 필요합니다":r.type==="comment_added"?"새 댓글이 있습니다":r.type==="post_created"?"새 글이 등록되었습니다":"확인해 주세요");
-        PCNotify.show(title, body, r.task_id||null);
+        if(!Store.db.notifs.some(x=>x.id===r.id)){ try{ Store.db.notifs.push(Maps.notif.from(r)); }catch(e){} }  // 즉시 반영
+        InApp.beep();                                  // 소리(권한 불필요)
+        updateNotifChrome();                           // 배지·탭제목 갱신
+        PCNotify.show(NOTIF_LABEL[r.type]||"새 알림", notifBodyText(r), r.task_id||null); // OS 팝업(허용 시 보너스)
+        const p=document.getElementById("notifPanel"); if(p&&p.style.display!=="none") renderNotifPanel();
         scheduleRealtimeRefresh();
       })
       .subscribe();
@@ -3044,7 +3094,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","clear-filter","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
@@ -3063,15 +3113,8 @@ document.getElementById("loginPw").addEventListener("keydown",e=>{if(e.key==="En
 document.getElementById("loginId").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPw").focus();});
 document.getElementById("logoutBtn").onclick=logout;
 document.getElementById("aiCfgBtn").onclick=openAiCfg;
-function refreshPcNotifyBtn(){ const b=document.getElementById("pcNotifyBtn"); if(!b) return;
-  if(!PCNotify.supported()||Notification.permission!=="default"){ b.style.display="none"; } else { b.style.display=""; } }
-document.getElementById("pcNotifyBtn").onclick=async()=>{
-  const r=await PCNotify.request();
-  if(r==="granted"){ toast("PC 팝업 알림이 켜졌습니다"); PCNotify.show("PC 알림 켜짐","이제 새 알림이 우측 하단에 표시됩니다",null); }
-  else if(r==="denied"){ toast("브라우저에서 알림이 차단되어 있습니다. 주소창 자물쇠 → 알림 허용으로 바꿔주세요"); }
-  else if(r==="unsupported"){ toast("이 브라우저는 PC 알림을 지원하지 않습니다"); }
-  refreshPcNotifyBtn();
-};
+document.getElementById("notifBell").onclick=(e)=>{ e.stopPropagation(); toggleNotifPanel(); };
+document.addEventListener("click",(e)=>{ const p=document.getElementById("notifPanel"); if(p&&p.style.display!=="none"&&!e.target.closest(".bellwrap")) p.style.display="none"; });
 document.getElementById("pwBtn").onclick=openPwChange;
 document.getElementById("mX").onclick=Modal.close;
 document.getElementById("mCancel").onclick=Modal.close;
