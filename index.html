@@ -521,7 +521,7 @@ const iso=ms=>new Date(ms).toISOString();
 const Maps={
   brand:{from:r=>({id:r.id,name:r.name,goal:r.goal,tone:r.tone}),
     to:b=>({id:b.id,name:b.name,goal:b.goal||null,tone:b.tone||null})},
-  user:{from:r=>({id:r.id,name:r.name,email:r.email,role:r.role,phone:r.phone||"",brandIds:[]})},
+  user:{from:r=>({id:r.id,name:r.name,email:r.email,role:r.role,phone:r.phone||"",brandIds:[],hireDate:r.hire_date||null,leaveAdjust:+r.leave_adjust||0})},
   campaign:{from:r=>({id:r.id,name:r.name,goal:r.goal,kpi:r.kpi}),
     to:c=>({id:c.id,name:c.name,goal:c.goal||null,kpi:c.kpi||null})},
   task:{from:r=>({id:r.id,title:r.title,purpose:r.purpose,brandId:r.brand_id,campaignId:r.campaign_id,ownerId:r.owner_id,priority:r.priority,start:r.start_date?Date.parse(r.start_date):null,due:r.due?Date.parse(r.due):Date.now(),status:r.status,kpis:r.kpis||[],execReport:r.exec_report,createdAt:Date.parse(r.created_at),updatedAt:Date.parse(r.updated_at)}),
@@ -723,6 +723,7 @@ const Store = (()=>{
     vacationsAll:()=>db.vacations.slice(),
     async addVacation(v){ const {error}=await sb.from("vacations").insert(Maps.vacation.to(v)); if(error){toast("휴가 저장 실패: "+error.message.slice(0,50));return false;} db.vacations.push(v); return true; },
     async delVacation(id){ const {error}=await sb.from("vacations").delete().eq("id",id); if(error){toast("삭제 실패: "+error.message.slice(0,50));return false;} db.vacations=db.vacations.filter(v=>v.id!==id); return true; },
+    async updateUserLeave(uid,hireDate,adjust){ const {error}=await sb.from("users").update({hire_date:hireDate||null,leave_adjust:adjust||0}).eq("id",uid); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} const u=db.users.find(x=>x.id===uid); if(u){u.hireDate=hireDate||null;u.leaveAdjust=adjust||0;} return true; },
     // ---- 지출결의서 ----
     expensesAll:()=>db.expenses.slice(),
     async addExpense(e){ const {error}=await sb.from("expenses").insert(Maps.expense.to(e)); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} db.expenses.push(e); return true; },
@@ -1687,6 +1688,7 @@ const Actions={
   goto(el){ session.route={view:el.dataset.view}; render(); },
   "open-task"(el){ session.route={view:"task",id:el.dataset.id}; render(); },
   "vac-add"(){ openVacationModal(); },
+  "leave-edit"(el){ openLeaveModal(el.dataset.id); },
   async "vac-del"(el){ if(confirm("이 휴가를 삭제할까요?")){ if(await Store.delVacation(el.dataset.id)){ toast("휴가가 삭제되었습니다"); render(); } } },
   "g-range"(el){ const g=el.dataset.gt==="m"?session.mgantt:session.gantt; g.range=el.dataset.range; g.anchor=null; render(); },
   "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
@@ -2531,8 +2533,28 @@ function viewGantt(){
   const upcoming=vacs.filter(v=>vmts(v.end)>=today).sort((a,b)=>vmts(a.start)-vmts(b.start));
   const vacStrip=(VAC_OK&&upcoming.length)?`<div class="card" style="margin-bottom:16px"><div class="card-b"><div style="font-size:12px;font-weight:700;color:var(--vac);margin-bottom:8px">🏖 휴가 (진행중·예정)</div><div class="g-due-strip">${upcoming.slice(0,12).map(v=>{const u=Store.user(v.userId);const canDel=me().role==="manager"||v.userId===me().id||v.createdBy===me().id;const ongoing=vmts(v.start)<=today&&today<=vmts(v.end);return `<div class="g-due" style="border-color:var(--vac);${ongoing?'background:var(--vac-bg)':''}"><span class="dd" style="color:var(--vac)">${ongoing?"휴가중":"예정"}</span><span class="tt">${esc(u?.name||"-")}</span><span class="mm">${mdisp(v.start)} ~ ${mdisp(v.end)}${canDel?` · <span style="cursor:pointer;color:var(--warn)" data-act="vac-del" data-id="${v.id}">삭제</span>`:""}</span></div>`;}).join("")}</div></div></div>`:"";
 
-  const hasContent = all.length || (VAC_OK && vacs.length);
+  // 잔여 연차 카드 (팀장: 전원 / 팀원: 본인)
+  const lvUsers=(me().role==="manager"||me().role==="executive")
+    ? Store.db.users.filter(u=>["member","manager","executive"].includes(u.role)&&u.hireDate)
+    : Store.db.users.filter(u=>u.id===me().id&&u.hireDate);
+  const isMgrLv=me().role==="manager";
+  const leaveCard=lvUsers.length?`<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>🏖 잔여 연차</h3><span class="hint" style="margin-left:auto">입사일 기준 매월 +1일 · 완료 휴가(평일) 차감</span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="ctab"><thead><tr><th>이름</th><th>입사일</th><th class="num">적립</th><th class="num">사용</th><th class="num">잔여</th><th class="num">예정</th>${isMgrLv?"<th></th>":""}</tr></thead><tbody>
+    ${lvUsers.map(u=>{const s=leaveSummary(u,new Date());return `<tr>
+      <td>${esc(u.name)}${u.id===me().id?' <span class="tag">나</span>':''}</td>
+      <td style="white-space:nowrap">${u.hireDate?mdisp(u.hireDate):"-"}</td>
+      <td class="num">${s.accrued}${s.adjust?`<span class="hint"> ${s.adjust>0?"+":""}${s.adjust}</span>`:""}</td>
+      <td class="num">${s.used}</td>
+      <td class="num" style="font-weight:800;color:${s.remain>0?"var(--ok)":s.remain<0?"var(--warn)":"var(--muted)"}">${s.remain}일</td>
+      <td class="num">${s.upcoming?`<span style="color:var(--vac)">${s.upcoming}일</span>`:"-"}</td>
+      ${isMgrLv?`<td class="num"><button class="btn btn-ghost btn-sm" data-act="leave-edit" data-id="${u.id}" style="padding:2px 8px;font-size:11px">설정</button></td>`:""}
+    </tr>`;}).join("")}
+    </tbody></table>
+    <div class="hint" style="margin-top:8px">잔여 = 적립 + 조정 − 사용(완료 휴가의 평일 수). ‘예정’은 아직 차감되지 않은 앞으로의 휴가입니다.</div></div></div>`:"";
+
+  const hasContent = all.length || (VAC_OK && vacs.length) || lvUsers.length;
   if(!hasContent) return `${ph("일정 (간트)","팀장 검토 완료된 확정 업무와 팀 휴가를 함께 봅니다.")}${toolbar()}<div class="card"><div class="card-b">${C.empty("📊","표시할 일정이 없습니다","팀장 검토 승인 업무 또는 ‘+ 휴가 생성’으로 등록한 휴가가 여기에 표시됩니다.")}</div></div>`;
+  if(!all.length && !(VAC_OK&&vacs.length) && lvUsers.length) return `${ph("일정 (간트)","팀 휴가와 잔여 연차를 함께 봅니다.")}${toolbar()}${leaveCard}`;
 
   // 윈도우 계산
   let win=ganttWindow();
@@ -2580,12 +2602,30 @@ function viewGantt(){
   ${ph("일정 (간트)","팀장 검토 완료된 확정 업무를 전 팀이 함께 봅니다. 막대를 누르면 상세로 이동합니다."+(isMgr?" 팀장은 ✕로 삭제할 수 있습니다.":""))}
   ${toolbar()}
   ${strip}
+  ${leaveCard}
   ${vacStrip}
   <div class="card"><div class="card-b"><div class="gantt-wrap"><div class="gantt">
     <div class="g-head"><div class="lbl">업무</div><div class="scale" style="position:relative;flex:1;height:14px">${ticks.map(tk=>`<span style="position:absolute;left:${tk.pct}%;transform:translateX(2px)">${tk.label}</span>`).join("")}</div></div>
     ${vacBody}
     ${body}
   </div></div></div></div>`;
+}
+function openLeaveModal(uid){
+  if(me().role!=="manager"&&me().role!=="executive"){ toast("팀장만 설정할 수 있습니다"); return; }
+  const u=Store.user(uid); if(!u) return;
+  const s=leaveSummary(u,new Date());
+  Modal.open({title:`${u.name} 연차 설정`,okLabel:"저장",body:`
+    <label class="fld"><span class="lab">입사일 <span class="hint">이 날짜 다음 달부터 매월 +1일 적립</span></span><input type="date" id="lv_hire" value="${u.hireDate||""}"></label>
+    <label class="fld"><span class="lab">조정값(±일) <span class="hint">과거 이력 보정용. 예: 이미 2일 썼으면 -2</span></span><input type="number" id="lv_adj" value="${+u.leaveAdjust||0}"></label>
+    <div class="callout" style="margin-top:8px;font-size:12.5px">
+      현재 계산 · 적립 <b>${s.accrued}</b> ${s.adjust?`(조정 ${s.adjust>0?"+":""}${s.adjust})`:""} · 사용 <b>${s.used}</b> · 예정 ${s.upcoming} → <b>잔여 ${s.remain}일</b>
+      <div class="hint" style="margin-top:6px">입사일/조정값을 바꾸면 잔여가 다시 계산됩니다.</div>
+    </div>`,
+    submit:async()=>{
+      const hire=val("lv_hire")||null, adj=parseInt(val("lv_adj"),10)||0;
+      if(!(await Store.updateUserLeave(uid,hire,adj))) return false;
+      toast("연차 설정을 저장했습니다"); render();
+    }});
 }
 function openVacationModal(){
   if(!VAC_OK){ toast("휴가 기능을 쓰려면 supabase_vacations.sql을 실행하세요"); return; }
@@ -2595,8 +2635,11 @@ function openVacationModal(){
   const who = isMgr
     ? `<label class="fld"><span class="lab">대상</span><select id="v_user">${people.map(u=>`<option value="${u.id}"${u.id===me().id?" selected":""}>${esc(u.name)}</option>`).join("")}</select></label>`
     : `<input type="hidden" id="v_user" value="${me().id}">`;
+  const myU=me(); const myS=myU.hireDate?leaveSummary(myU,new Date()):null;
+  const availNote = (!isMgr && myS)?`<div class="callout" style="margin-bottom:12px;font-size:12.5px">내 가용 연차 <b style="color:${(myS.remain-myS.upcoming)>0?'var(--ok)':'var(--warn)'}">${Math.max(0,myS.remain-myS.upcoming)}일</b> <span class="hint">(잔여 ${myS.remain} · 예정 ${myS.upcoming})</span>${(myS.remain-myS.upcoming)<=0?' · 더 이상 휴가를 생성할 수 없습니다':''}</div>`:"";
   Modal.open({title:"휴가 생성",okLabel:"등록",body:`
     ${isMgr?"":`<div class="info" style="margin-bottom:12px">${esc(me().name)} 님의 휴가로 등록됩니다.</div>`}
+    ${availNote}
     ${who}
     <div class="grid g2" style="gap:0 16px">
       <label class="fld"><span class="lab">시작일</span><input type="date" id="v_start" value="${today}"></label>
@@ -2607,6 +2650,21 @@ function openVacationModal(){
       const userId=val("v_user")||me().id, s=val("v_start"), e=val("v_end");
       if(!s||!e){ toast("시작일과 종료일을 선택하세요"); return false; }
       if(e<s){ toast("종료일은 시작일 이후여야 합니다"); return false; }
+      // 잔여 연차 검증: 잔여 − 이미 예정 − 이번 신청(평일) < 0 이면 차단 (예정까지 합산, 팀장 포함)
+      const tgt=Store.user(userId);
+      if(tgt && tgt.hireDate){
+        const sum=leaveSummary(tgt,new Date());
+        const reqDays=weekdaysBetween(s,e);   // 이번 신청 평일 수
+        const available=sum.remain - sum.upcoming;   // 예정분까지 뺀 실제 가용
+        if(reqDays<=0){ toast("주말만 선택되어 사용할 평일이 없습니다"); return false; }
+        if(available - reqDays < 0){
+          toast(`잔여 연차 부족 — 가용 ${Math.max(0,available)}일(잔여 ${sum.remain} · 예정 ${sum.upcoming}), 신청 ${reqDays}일(평일)`);
+          return false;
+        }
+      } else if(tgt && !tgt.hireDate){
+        toast("입사일이 설정되지 않아 연차를 계산할 수 없습니다. 팀장에게 문의하세요");
+        return false;
+      }
       const v={id:Store.uid(),userId,start:s,end:e,memo:val("v_memo").trim(),createdBy:me().id,createdAt:Date.now()};
       if(!(await Store.addVacation(v))) return false;
       toast("휴가가 등록되었습니다"); render();
@@ -2724,6 +2782,49 @@ function adBars(items,fmt){ const max=Math.max(...items.map(i=>i.value),1);
 const CTYPES=["카드뉴스","릴스","스토리","기타"];
 function contentPeriodLabel(p){ if(!p) return ""; const [y,m]=p.split("-"); return `${y}년 ${+m}월`; }
 function contentAgg(rows){ const M=["views","reach","likes","shares","follows","comments","saves"]; const o={}; M.forEach(k=>o[k]=rows.reduce((s,r)=>s+(r[k]||0),0)); o.count=rows.length; return o; }
+/* ---- 연차(잔여 휴가) 계산 ---- */
+const LV_dparse=d=>{ if(!d) return null; const p=String(d).split("-").map(Number); return p.length===3?new Date(p[0],p[1]-1,p[2]):null; };
+const LV_sod=dt=>{ const d=new Date(dt); d.setHours(0,0,0,0); return d; };
+// 적립: 입사 다음 달 입사일부터 매월 입사일에 +1 (asOf 날짜까지 누적)
+function leaveAccrued(hireDate, asOf){
+  const h=LV_dparse(hireDate); if(!h) return 0;
+  const today=LV_sod(asOf||new Date());
+  let y=h.getFullYear(), m=h.getMonth()+1, hd=h.getDate(), n=0;
+  m+=1; if(m>12){m=1;y++;}
+  for(let guard=0; guard<600; guard++){
+    const lastDay=new Date(y,m,0).getDate();
+    const day=Math.min(hd,lastDay);
+    const d=LV_sod(new Date(y,m-1,day));
+    if(d<=today){ n++; m++; if(m>12){m=1;y++;} } else break;
+  }
+  return n;
+}
+// 평일 수(주말 제외), 시작~종료 포함
+function weekdaysBetween(startStr,endStr){
+  const s=LV_dparse(startStr), e=LV_dparse(endStr); if(!s||!e) return 0;
+  let cnt=0; const cur=new Date(s);
+  while(cur<=e){ const wd=cur.getDay(); if(wd!==0&&wd!==6) cnt++; cur.setDate(cur.getDate()+1); }
+  return cnt;
+}
+// 사용(완료=종료일이 지난 휴가)의 평일 합 / 예정(오늘 이후 종료)의 평일 합
+function leaveUsage(userId, asOf){
+  const today=LV_sod(asOf||new Date());
+  let used=0, upcoming=0;
+  (Store.db.vacations||[]).filter(v=>v.userId===userId).forEach(v=>{
+    const wd=weekdaysBetween(v.start,v.end);
+    const end=LV_dparse(v.end);
+    if(end && LV_sod(end)<today) used+=wd; else upcoming+=wd;
+  });
+  return {used, upcoming};
+}
+// 종합: {accrued, adjust, used, upcoming, remain}
+function leaveSummary(user, asOf){
+  const accrued=leaveAccrued(user.hireDate, asOf);
+  const adjust=+user.leaveAdjust||0;
+  const {used, upcoming}=leaveUsage(user.id, asOf);
+  const remain=accrued+adjust-used;
+  return {accrued, adjust, used, upcoming, remain};
+}
 const EXP_STATUS={pending:{l:"집행 대기",c:"--brass"},paid:{l:"집행 완료",c:"--ok"}};
 function expTotal(items){ return (items||[]).reduce((s,it)=>s+(+it.amount||0),0); }
 function won(n){ return (n||0).toLocaleString()+"원"; }
