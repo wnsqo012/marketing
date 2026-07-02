@@ -60,6 +60,14 @@
   .ai-flag{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.25);color:#cfe0de}
   .ai-flag.live{background:var(--brass);border-color:var(--brass);color:#fff}
   .hbtn{appearance:none;border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe0de;font-size:11.5px;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:var(--fm)}
+  .cmet-kpis{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .cmet-kpis .kpi{flex:1;min-width:120px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;text-align:center}
+  .cmet-kpis .kpi .v{font-size:21px;font-weight:800;color:var(--primary);line-height:1.15}
+  .cmet-kpis .kpi .l{font-size:11.5px;color:var(--ink-soft);margin-top:5px}
+  table.ctab{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.ctab th{background:var(--surface-2);color:var(--ink-soft);font-weight:700;padding:8px 9px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.ctab td{padding:7px 9px;text-align:center;border-bottom:1px solid var(--line)}
+  table.ctab tr.tot td{font-weight:800;background:var(--surface-2);color:var(--primary)}
   #notifBell{position:relative;padding:6px 10px}
   .nbadge{position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;line-height:17px;text-align:center;border-radius:9px;padding:0 4px;font-family:var(--fm)}
   .notifpanel{position:absolute;top:40px;right:0;width:320px;max-height:60vh;overflow:auto;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.24);z-index:60}
@@ -478,7 +486,7 @@ let ASSET_SORT_OK=false;    // sort_no 컬럼 존재 시 true (산출물 순서)
 let ASSET_PHASES_OK=false;  // phases 컬럼 존재 시 true (영상 단계 기간)
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
-let MEETING_TIME_OK=false;  // meetings.mtime 컬럼 존재 시 true (회의 시간)
+let CONTENT_OK=false;       // content_metrics 테이블 존재 시 true (콘텐츠 성과)
 let MEETING_EXT_OK=false;   // 회의명(title)+회의댓글 확장 적용 시 true
 let APP_SETTINGS_OK=false;  // app_settings(공용 AI 키) 테이블 존재 시 true
 let ORPHAN={status:"idle",all:[],orphans:[],refCount:0,totalCount:0,reclaim:0};
@@ -509,8 +517,8 @@ const Maps={
     to:l=>({id:l.id,user_id:l.userId,event:l.event,user_agent:l.userAgent||null,created_at:iso(l.createdAt)})},
   taskMember:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null}),
     to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null})},
-  meeting:{from:r=>({id:r.id,title:r.title||"",date:r.mdate,time:r.mtime||"",agenda:r.agenda,attendees:r.attendees,fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,minutes:r.minutes||"",status:r.status||"scheduled",doneAt:r.done_at?Date.parse(r.done_at):null,createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
-    to:m=>{const o={id:m.id,mdate:m.date,agenda:m.agenda,attendees:m.attendees,file_url:m.fileData||null,file_name:m.fileName||null,file_mime:m.fileMime||null,minutes:m.minutes||null,status:m.status||"scheduled",done_at:m.doneAt?iso(m.doneAt):null,created_by:m.createdBy,created_at:iso(m.createdAt)}; if(m.title) o.title=m.title; if(m.time) o.mtime=m.time; return o;}},
+  meeting:{from:r=>({id:r.id,title:r.title||"",date:r.mdate,agenda:r.agenda,attendees:r.attendees,fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,minutes:r.minutes||"",status:r.status||"scheduled",doneAt:r.done_at?Date.parse(r.done_at):null,createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
+    to:m=>{const o={id:m.id,mdate:m.date,agenda:m.agenda,attendees:m.attendees,file_url:m.fileData||null,file_name:m.fileName||null,file_mime:m.fileMime||null,minutes:m.minutes||null,status:m.status||"scheduled",done_at:m.doneAt?iso(m.doneAt):null,created_by:m.createdBy,created_at:iso(m.createdAt)}; if(m.title) o.title=m.title; return o;}},
   meetingComment:{from:r=>({id:r.id,meetingId:r.meeting_id,authorId:r.author_id,body:r.body||"",fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,createdAt:Date.parse(r.created_at)}),
     to:c=>({id:c.id,meeting_id:c.meetingId,author_id:c.authorId,body:c.body||null,file_url:c.fileData||null,file_name:c.fileName||null,file_mime:c.fileMime||null,created_at:iso(c.createdAt)})},
   notif:{from:r=>({id:r.id,type:r.type,taskId:r.task_id,recipientId:r.recipient_id,recipientRole:r.recipient_role,channel:r.channel,message:r.message,status:r.status,errorMessage:r.error_message,sentAt:Date.parse(r.sent_at)}),
@@ -521,6 +529,8 @@ const Maps={
     to:c=>({id:c.id,post_id:c.postId,author_id:c.authorId||null,body:c.body,file_url:c.fileData||null,file_name:c.fileName||null,file_mime:c.fileMime||null,created_at:iso(c.createdAt)})},
   adMetric:{from:r=>({id:r.id,platform:r.platform,date:r.date,campaign:r.campaign||"",spend:+r.spend||0,impressions:+r.impressions||0,clicks:+r.clicks||0,conversions:+r.conversions||0,revenue:+r.revenue||0,batchId:r.batch_id,uploadedBy:r.uploaded_by,createdAt:Date.parse(r.created_at)}),
     to:m=>({id:m.id,platform:m.platform,date:m.date||null,campaign:m.campaign||null,spend:m.spend||0,impressions:m.impressions||0,clicks:m.clicks||0,conversions:m.conversions||0,revenue:m.revenue||0,batch_id:m.batchId||null,uploaded_by:m.uploadedBy||null,created_at:iso(m.createdAt)})},
+  contentMetric:{from:r=>({id:r.id,period:r.period,ctype:r.ctype,postedAt:r.posted_at?Date.parse(r.posted_at):null,link:r.link||"",views:+r.views||0,reach:+r.reach||0,likes:+r.likes||0,shares:+r.shares||0,follows:+r.follows||0,comments:+r.comments||0,saves:+r.saves||0,memo:r.memo||"",createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
+    to:m=>({id:m.id,period:m.period,ctype:m.ctype,posted_at:m.postedAt?iso(m.postedAt):null,link:m.link||null,views:m.views||0,reach:m.reach||0,likes:m.likes||0,shares:m.shares||0,follows:m.follows||0,comments:m.comments||0,saves:m.saves||0,memo:m.memo||null,created_by:m.createdBy||null,created_at:iso(m.createdAt)})},
 };
 // 결과를 boolean 으로 반환 — 호출부가 성공 여부에 따라 캐시 확정/롤백 결정
 async function sbInsert(table,row){
@@ -550,7 +560,7 @@ async function guardedUpdate(table, id, patch, applyLocal){
 const Store = (()=>{
   let db;
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(36).slice(2,8));
-  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],accessLogs:[],taskMembers:[],meetings:[],meetingComments:[]}; }
+  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],meetings:[],meetingComments:[]}; }
   async function loadAll(){
     db=blank();
     const get=async(table,from)=>{ const {data,error}=await sb.from(table).select("*"); if(error)throw error; return (data||[]).map(from); };
@@ -576,10 +586,10 @@ const Store = (()=>{
     try{ db.posts=await get("posts",Maps.post.from); }catch(e){ db.posts=[]; }
     try{ db.comments=await get("comments",Maps.comment.from); }catch(e){ db.comments=[]; }
     try{ db.adMetrics=await get("ad_metrics",Maps.adMetric.from); }catch(e){ db.adMetrics=[]; }
+    try{ db.contentMetrics=await get("content_metrics",Maps.contentMetric.from); CONTENT_OK=true; }catch(e){ db.contentMetrics=[]; CONTENT_OK=false; }
     try{ db.accessLogs=await get("access_logs",Maps.accessLog.from); }catch(e){ db.accessLogs=[]; }
     try{ db.taskMembers=await get("task_members",Maps.taskMember.from); TASK_MEMBERS_OK=true; }catch(e){ db.taskMembers=[]; TASK_MEMBERS_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
-    if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("mtime").limit(1); MEETING_TIME_OK=!error; }catch(e){ MEETING_TIME_OK=false; } }
     try{ db.meetingComments=await get("meeting_comments",Maps.meetingComment.from); MEETING_EXT_OK=true; }catch(e){ db.meetingComments=[]; MEETING_EXT_OK=false; }
     try{ const {data}=await sb.from("app_settings").select("value").eq("key","ai").maybeSingle(); if(data&&data.value){ AI.key=data.value.key||""; AI.model=data.value.model||AI.model; AI.useReal=!!data.value.useReal; AI.mode=data.value.mode||"direct"; } APP_SETTINGS_OK=true; }catch(e){ APP_SETTINGS_OK=false; }
   }
@@ -623,6 +633,24 @@ const Store = (()=>{
       if(error){ toast("삭제 실패: "+error.message.slice(0,50)); return false; }
       db.adMetrics=db.adMetrics.filter(m=>m.batchId!==batchId);
       return true;
+    },
+    // ---- 콘텐츠 성과(오가닉) ----
+    contentAll:()=>db.contentMetrics.slice(),
+    contentPeriods(){ return [...new Set(db.contentMetrics.map(m=>m.period))].sort().reverse(); },
+    async addContent(m){
+      const {error}=await sb.from("content_metrics").insert(Maps.contentMetric.to(m));
+      if(error){ console.error("[content insert]",error); toast("저장 실패: "+error.message.slice(0,70)); return false; }
+      db.contentMetrics.push(m); return true;
+    },
+    async updateContent(id,patch,apply){
+      const {error}=await sb.from("content_metrics").update(patch).eq("id",id);
+      if(error){ toast("수정 실패: "+error.message.slice(0,60)); return false; }
+      const m=db.contentMetrics.find(x=>x.id===id); if(m&&apply) apply(m); return true;
+    },
+    async delContent(id){
+      const {error}=await sb.from("content_metrics").delete().eq("id",id);
+      if(error){ toast("삭제 실패: "+error.message.slice(0,50)); return false; }
+      db.contentMetrics=db.contentMetrics.filter(m=>m.id!==id); return true;
     },
     uid,
     // ---- 낙관적 삽입 (성공 boolean 반환, 실패 시 캐시 자동 롤백) ----
@@ -802,7 +830,7 @@ const AiService=(()=>{
       try{
         const sys=`너는 회의 기록 보조자다. 회의록을 바탕으로 (1) 핵심 요약(3~5개 불릿), (2) 결정 사항, (3) 후속 액션(담당/기한 추정 포함 가능), (4) 추가로 논의·검토하면 좋은 방향성 제안 2~3가지를 작성한다. 한국어. JSON만 출력:
 {"summary":["",""],"decisions":["",""],"actions":["",""],"directions":["",""]}`;
-        const usr=`[회의명]${meeting.title||"-"}\n[일자]${meeting.date}${meeting.time?" "+meeting.time:""}\n[안건]${meeting.agenda}\n[참석자]${meeting.attendees}\n[회의록]\n${text}`;
+        const usr=`[회의명]${meeting.title||"-"}\n[일자]${meeting.date}\n[안건]${meeting.agenda}\n[참석자]${meeting.attendees}\n[회의록]\n${text}`;
         return await call(sys,usr);
       }catch(e){ console.error("[meetingSummary]",e); toast("AI 요약 실패: "+String(e&&e.message||e).slice(0,90)); }
     }
@@ -1038,14 +1066,12 @@ const Notify=(()=>{
   function deadlineCheck(){
     const cfg=Settings.get(); if(!cfg.enabled) return; if(!me()||me().role!=="manager") return;
     const now=Date.now(), day=86400000;
-    const sod=ts=>{ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); };
-    const todayDay=sod(now);
     Store.db.tasks.forEach(t=>{
       if(STATUS[t.status].idx>=STATUS.executed.idx) return; // 집행/성과 단계는 제외
-      const dueDay=sod(t.due), diffDays=Math.round((dueDay-todayDay)/day); let type=null;
-      if(diffDays<0 && cfg.deadline.overdue) type="overdue";          // 마감일 다음날부터(1일 후~)
-      else if(diffDays===0 && cfg.deadline.dday) type="due_soon";     // 당일
-      else if(diffDays===1 && cfg.deadline.d1) type="due_soon";       // 하루 전
+      const overdue=t.due<now, dleft=t.due-now; let type=null;
+      if(overdue && cfg.deadline.overdue) type="overdue";
+      else if(!overdue && sameDay(t.due,now) && cfg.deadline.dday) type="due_soon";
+      else if(!overdue && dleft>0 && dleft<=day && cfg.deadline.d1) type="due_soon";
       if(!type) return;
       if(Store.db.notifs.some(n=>n.taskId===t.id&&n.type===type&&sameDay(n.sentAt,now)&&n.status!=="failed")) return; // 하루 1회
       send({type,recipientRole:"manager+member",taskId:t.id});
@@ -1170,7 +1196,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -1492,32 +1518,13 @@ function viewStats(){
 
 /* ---- Feedback Library (manager/exec) ---- */
 function viewLibrary(){
-  const role=me().role, uid=me().id;
-  const allTasks=Store.db.tasks;
-  const scope = role==="member"
-    ? allTasks.filter(t=>t.ownerId===uid || Store.membersOf(t.id).some(m=>m.userId===uid))
-    : allTasks;
-  const rows=scope.map(t=>{
-    const revs=Store.reviewsOf(t.id).filter(r=>r.role==="manager"&&(r.comment||r.cat||r.detail));
-    if(!revs.length) return null;
-    return {task:t, brand:Store.brand(t.brandId), revs};
-  }).filter(Boolean).sort((a,b)=>b.revs[0].createdAt-a.revs[0].createdAt);
-  const sub = role==="member" ? "내가 맡은 업무(소유·공동담당)에 대한 팀장 검토 의견입니다." : "업무별 팀장 검토 의견 모음입니다.";
-  const body = rows.length ? `<div class="alist">${rows.map(({task,brand,revs})=>`
-    <div class="arow">
-      <div class="row" style="gap:7px;flex-wrap:wrap"><span class="tag">${esc(brand?.name||"-")}</span><b style="font-size:13px">${esc(task.title)}</b><span class="hint" style="margin-left:auto">${fmtDate(revs[0].createdAt)}</span></div>
-      <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
-        ${revs.map(r=>`<div style="border-left:3px solid ${r.decision==="approved"?"var(--ok,#2e7d32)":"var(--warn)"};padding:4px 0 4px 9px">
-          <div class="row" style="gap:7px"><span class="check ${r.decision==="approved"?"pass":"warn"}">${r.decision==="approved"?"✓ 승인":"반려"}</span>${r.cat?`<span class="tag">${esc(r.cat)}</span>`:""}<span class="hint" style="margin-left:auto;font-family:var(--fm)">${fmtDate(r.createdAt)}</span></div>
-          ${(r.comment||r.detail)?`<div style="margin-top:4px;font-size:12.5px;white-space:pre-wrap;line-height:1.55">${esc(r.comment||r.detail)}</div>`:`<div class="hint" style="margin-top:4px">별도 코멘트 없음</div>`}
-        </div>`).join("")}
-      </div>
-      <div class="hint" style="margin-top:8px"><span style="cursor:pointer;color:var(--primary)" data-act="open-task" data-id="${task.id}">→ 업무 상세 보기</span></div>
-    </div>`).join("")}</div>`
-    : C.empty("💬", role==="member"?"받은 팀장 피드백이 없습니다":"팀장 검토 의견이 없습니다", "팀장이 승인·반려 시 남긴 의견이 여기에 모입니다.");
+  const fb=Store.db.feedbackLib.sort((a,b)=>b.createdAt-a.createdAt);
   return `
-  ${ph("피드백 라이브러리", sub)}
-  <div class="card"><div class="card-b">${body}</div></div>`;
+  ${ph("피드백 라이브러리","대표 피드백을 축적해 AI 보고 요약에 반영합니다.")}
+  <div class="info" style="margin-bottom:16px">여기 쌓인 피드백은 대표 보고 요약 생성 시 <b>해당 브랜드의 과거 경향</b>으로 자동 참고됩니다.</div>
+  <div class="card"><div class="card-b">${fb.length?`<div class="alist">${fb.map(f=>{const b=Store.brand(f.brandId),tk=Store.task(f.taskId);
+    return `<div class="arow"><div class="row" style="gap:7px"><span class="tag">${esc(b?.name||'')}</span><span class="check pass">${esc(f.purposeFit)}</span><span class="tag">${esc(f.decision)}</span><span class="hint" style="margin-left:auto">${fmtDate(f.createdAt)}</span></div>
+      <div style="margin-top:7px;font-size:12.5px">${esc(f.note)}</div><div class="hint" style="margin-top:4px">업무: ${esc(tk?.title||'-')}</div></div>`;}).join("")}</div>`:C.empty("💬","아직 저장된 피드백 없음","대표가 검토 의견을 남기면 자동 저장됩니다.")}</div></div>`;
 }
 
 /* =====================================================================
@@ -1653,7 +1660,6 @@ const Actions={
   "manage-members"(el){ openMembersModal(el.dataset.id); },
   "new-meeting"(){ openMeetingModal(); },
   "edit-meeting-title"(el){ openMeetingTitleModal(el.dataset.id); },
-  "edit-meeting-time"(el){ openMeetingTimeModal(el.dataset.id); },
   async "add-meeting-comment"(el){ const mid=el.dataset.id; const body=(val("mc_body")||"").trim(); const f=document.getElementById("mc_file")?.files[0];
     if(!body && !f){ toast("내용이나 파일을 입력하세요"); return; }
     let att=null; if(f){ att=await uploadOne(f); if(att===null) return; }
@@ -1672,6 +1678,10 @@ const Actions={
     const merged=(cur.trim()?cur.trim()+"\n\n":"")+"── AI 요약·제안 ──\n"+aiMeetingText(m._ai);
     if(await Store.update("meetings",m.id,{minutes:merged},()=>{m.minutes=merged;})){ m._ai=null; toast("회의록에 반영했습니다"); render(); } else toast("반영 실패"); },
   "ai-meeting-clear"(el){ const m=Store.meeting(el.dataset.id); if(m){ m._ai=null; render(); } },
+  "content-add"(){ openContentModal(); },
+  "content-edit"(el){ const m=Store.contentAll().find(x=>x.id===el.dataset.id); if(m) openContentModal(m); },
+  async "content-del"(el){ if(confirm("이 게시물 성과를 삭제할까요?")){ if(await Store.delContent(el.dataset.id)){ toast("삭제되었습니다"); render(); } } },
+  "content-newperiod"(){ const v=prompt("추가할 기간을 입력하세요 (YYYY-MM)", new Date().toISOString().slice(0,7)); if(v&&/^\d{4}-\d{2}$/.test(v)){ session.contentPeriod=v; render(); } else if(v){ toast("형식이 올바르지 않습니다 (예: 2026-06)"); } },
   "open-meeting"(el){ session.route={view:"meeting",id:el.dataset.id}; render(); },
   "open-notif"(el){ const tid=el.dataset.task; const p=document.getElementById("notifPanel"); if(p)p.style.display="none"; if(tid){ session.route={view:"task",id:tid}; render(); } },
   async "save-minutes"(el){ const m=Store.meeting(el.dataset.id); if(!m)return; const mins=val("mt_minutes");
@@ -2468,6 +2478,78 @@ function adSvgLine(series,axisFmt){
 function adBars(items,fmt){ const max=Math.max(...items.map(i=>i.value),1);
   return `<div class="adbars">`+items.map(i=>`<div class="adbar-row"><span>${esc(i.label)}</span><span class="adbar-track"><span class="adbar-fill" style="width:${(i.value/max*100).toFixed(1)}%"></span></span><span class="adbar-val">${fmt(i.value)}</span></div>`).join("")+`</div>`; }
 
+const CTYPES=["카드뉴스","릴스","스토리","기타"];
+function contentPeriodLabel(p){ if(!p) return ""; const [y,m]=p.split("-"); return `${y}년 ${+m}월`; }
+function contentAgg(rows){ const M=["views","reach","likes","shares","follows","comments","saves"]; const o={}; M.forEach(k=>o[k]=rows.reduce((s,r)=>s+(r[k]||0),0)); o.count=rows.length; return o; }
+function viewContent(){
+  const role=me().role;
+  if(!CONTENT_OK) return `${ph("콘텐츠 성과","인스타 등 오가닉 게시물 성과를 월별로 입력·집계합니다.")}
+    <div class="card"><div class="card-b">${C.empty("📱","기능 준비 필요","supabase_content_metrics.sql 을 Supabase에서 실행한 뒤 새로고침하세요.")}</div></div>`;
+  const canWrite = role==="manager"||role==="member"||role==="executive";
+  const periods=Store.contentPeriods();
+  let cur=session.contentPeriod || periods[0] || new Date().toISOString().slice(0,7);
+  const rows=Store.contentAll().filter(m=>m.period===cur).sort((a,b)=>(a.postedAt||0)-(b.postedAt||0));
+  const all=contentAgg(rows);
+  const reels=rows.filter(r=>r.ctype==="릴스"), cards=rows.filter(r=>r.ctype==="카드뉴스");
+  const ra=contentAgg(reels), ca=contentAgg(cards);
+  const top=rows.slice().sort((a,b)=>b.views-a.views)[0];
+  const periodOpts=[...new Set([...periods,cur])].sort().reverse().map(p=>`<option value="${p}"${p===cur?" selected":""}>${contentPeriodLabel(p)}</option>`).join("");
+  const right=`<div class="row" style="gap:8px">
+    <select id="c_period" style="padding:7px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:13px">${periodOpts}</select>
+    ${canWrite?`<button class="btn btn-sm" data-act="content-newperiod">＋ 기간</button><button class="btn btn-primary btn-sm" data-act="content-add">＋ 게시물 추가</button>`:""}</div>`;
+  const kcard=(v,l)=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  const summary=rows.length?`
+    <div class="cmet-kpis">
+      ${kcard(all.views.toLocaleString(),"총 조회")}${kcard(all.reach.toLocaleString(),"총 도달")}
+      ${kcard("+"+all.follows,"신규 팔로우")}${kcard(all.saves,"저장")}${kcard(all.likes+" / "+all.shares,"좋아요 / 공유")}
+    </div>
+    <div class="card" style="margin-bottom:16px"><div class="card-h"><h3>유형별 집계</h3></div><div class="card-b" style="overflow-x:auto">
+      <table class="ctab"><thead><tr><th>유형</th><th>건수</th><th>총 조회</th><th>총 도달</th><th>팔로우</th><th>저장</th><th>게시물당 평균 조회</th></tr></thead><tbody>
+      ${[["릴스",ra],["카드뉴스",ca]].map(([t,a])=>a.count?`<tr><td><b>${t}</b></td><td>${a.count}</td><td>${a.views.toLocaleString()}</td><td>${a.reach.toLocaleString()}</td><td>${a.follows}</td><td>${a.saves}</td><td><b>${a.count?Math.round(a.views/a.count).toLocaleString():0}</b></td></tr>`:"").join("")}
+      <tr class="tot"><td>합계</td><td>${all.count}</td><td>${all.views.toLocaleString()}</td><td>${all.reach.toLocaleString()}</td><td>${all.follows}</td><td>${all.saves}</td><td>${all.count?Math.round(all.views/all.count).toLocaleString():0}</td></tr>
+      </tbody></table>
+      ${(ra.count&&ca.count)?`<div class="hint" style="margin-top:10px">📌 릴스 게시물당 평균 조회가 카드뉴스의 <b>${(ra.views/ra.count/(ca.views/ca.count||1)).toFixed(1)}배</b>${top?` · 최고 성과: ${fmtDate(top.postedAt)} ${esc(top.ctype)} (조회 ${top.views.toLocaleString()})`:""}</div>`:""}
+    </div></div>`
+    :C.empty("📱","이 기간에 입력된 게시물이 없습니다","‘＋ 게시물 추가’로 성과를 입력하세요.");
+  const table=rows.length?`<div class="card"><div class="card-h"><h3>게시물 목록 (${rows.length})</h3></div><div class="card-b" style="overflow-x:auto">
+    <table class="ctab"><thead><tr><th>게시일</th><th>유형</th><th>조회</th><th>도달</th><th>좋아요</th><th>공유</th><th>팔로우</th><th>댓글</th><th>저장</th><th>링크</th>${canWrite?"<th></th>":""}</tr></thead><tbody>
+    ${rows.map(m=>`<tr>
+      <td style="white-space:nowrap">${m.postedAt?fmtDT(m.postedAt):"-"}</td><td>${esc(m.ctype)}</td>
+      <td>${m.views.toLocaleString()}</td><td>${m.reach.toLocaleString()}</td><td>${m.likes}</td><td>${m.shares}</td><td>${m.follows}</td><td>${m.comments}</td><td>${m.saves}</td>
+      <td>${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener" style="color:var(--primary)">열기</a>`:"-"}</td>
+      ${canWrite?`<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-act="content-edit" data-id="${m.id}" style="padding:2px 7px;font-size:11px">수정</button> <button class="btn btn-ghost btn-sm" data-act="content-del" data-id="${m.id}" style="padding:2px 7px;font-size:11px">삭제</button></td>`:""}
+    </tr>`).join("")}
+    </tbody></table></div></div>`:"";
+  return `${ph("콘텐츠 성과",`${contentPeriodLabel(cur)} · 오가닉 게시물 성과`,right)}${summary}${table}`;
+}
+function openContentModal(preset){
+  if(!(me().role==="manager"||me().role==="member"||me().role==="executive")){ toast("입력 권한이 없습니다"); return; }
+  const p=preset||null;
+  const cur=session.contentPeriod || Store.contentPeriods()[0] || new Date().toISOString().slice(0,7);
+  const dtVal=p&&p.postedAt?new Date(p.postedAt-new Date(p.postedAt).getTimezoneOffset()*60000).toISOString().slice(0,16):`${cur}-01T09:00`;
+  const num=(id,lab,v)=>`<label class="fld"><span class="lab">${lab}</span><input type="number" id="${id}" min="0" value="${v!=null?v:0}"></label>`;
+  Modal.open({title:p?"게시물 성과 수정":"게시물 성과 추가",okLabel:p?"저장":"추가",body:`
+    <div class="grid g2" style="gap:0 16px">
+      <label class="fld"><span class="lab">게시물 유형</span><select id="c_type">${CTYPES.map(t=>`<option${p&&p.ctype===t?" selected":""}>${t}</option>`).join("")}</select></label>
+      <label class="fld"><span class="lab">게시일시</span><input type="datetime-local" id="c_dt" value="${dtVal}"></label>
+    </div>
+    <label class="fld"><span class="lab">게시물 링크 <span class="hint">선택</span></span><input type="url" id="c_link" placeholder="https://www.instagram.com/..." value="${p?esc(p.link):""}"></label>
+    <div class="grid g2" style="gap:0 16px">
+      ${num("c_views","조회",p&&p.views)}${num("c_reach","도달",p&&p.reach)}
+      ${num("c_likes","좋아요",p&&p.likes)}${num("c_shares","공유",p&&p.shares)}
+      ${num("c_follows","팔로우",p&&p.follows)}${num("c_comments","댓글",p&&p.comments)}
+      ${num("c_saves","저장",p&&p.saves)}
+    </div>`,
+    submit:async()=>{
+      const dt=val("c_dt"); const postedAt=dt?new Date(dt).getTime():null;
+      const gv=id=>{const el=document.getElementById(id);return el?(+el.value||0):0;};
+      const rec={ctype:val("c_type"),postedAt,link:val("c_link").trim(),views:gv("c_views"),reach:gv("c_reach"),likes:gv("c_likes"),shares:gv("c_shares"),follows:gv("c_follows"),comments:gv("c_comments"),saves:gv("c_saves")};
+      if(p){ const patch={ctype:rec.ctype,posted_at:postedAt?iso(postedAt):null,link:rec.link||null,views:rec.views,reach:rec.reach,likes:rec.likes,shares:rec.shares,follows:rec.follows,comments:rec.comments,saves:rec.saves};
+        if(await Store.updateContent(p.id,patch,m=>Object.assign(m,rec))){ toast("수정되었습니다"); render(); } else return false;
+      } else { const m={id:Store.uid(),period:cur,...rec,memo:"",createdBy:me().id,createdAt:Date.now()};
+        if(await Store.addContent(m)){ toast("추가되었습니다"); render(); } else return false; }
+    }});
+}
 function viewAds(){
   const canUpload=me().role!=="viewer";
   const uploadBtn=canUpload?`<button class="btn btn-primary btn-sm" data-act="ad-upload">⬆ 데이터 업로드</button>`:"";
@@ -2725,19 +2807,17 @@ function viewMeetings(){
   const head=ph("회의","팀 회의를 생성하고, 회의록 작성 후 완료로 기록합니다.", canWrite&&MEETINGS_OK?`<button class="btn btn-primary btn-sm" data-act="new-meeting">+ 새 회의</button>`:"");
   if(!MEETINGS_OK) return head+`<div class="card"><div class="card-b"><div class="info">회의 기능을 사용하려면 <b>supabase_meetings.sql</b>을 먼저 실행해 주세요. 실행 전에는 회의 생성·조회가 되지 않습니다.</div></div></div>`;
   const ms=Store.db.meetings.slice();
-  const sched=ms.filter(m=>m.status!=="done").sort((a,b)=>mtsFull(a)-mtsFull(b));
+  const sched=ms.filter(m=>m.status!=="done").sort((a,b)=>(a.date<b.date?-1:1));
   const done=ms.filter(m=>m.status==="done").sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   const card=m=>{ const att=m.fileData?'📎 ':''; const who=Store.user(m.createdBy)?.name||""; const done=m.status==="done";
     return `<div class="arow" data-act="open-meeting" data-id="${m.id}" style="cursor:pointer">
-      <div class="row" style="justify-content:space-between;gap:8px"><div class="row" style="gap:8px"><span class="tag" style="font-family:var(--fm)">${mDispDT(m)}</span>${done?'<span class="check pass">완료</span>':'<span class="tag">예정</span>'}</div><span class="hint">${esc(who)}</span></div>
+      <div class="row" style="justify-content:space-between;gap:8px"><div class="row" style="gap:8px"><span class="tag" style="font-family:var(--fm)">${mdisp(m.date)}</span>${done?'<span class="check pass">완료</span>':'<span class="tag">예정</span>'}</div><span class="hint">${esc(who)}</span></div>
       <div style="font-weight:600;font-size:14px;margin:6px 0 2px">${att}${esc(m.title||(m.agenda.length>60?m.agenda.slice(0,60)+"…":m.agenda))}</div>
       <div class="hint">참석: ${esc(m.attendees)}${done&&m.doneAt?` · 완료 ${fmtDT(m.doneAt)}`:""}</div></div>`; };
   const sec=(title,arr,empty)=>`<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>${title}</h3><span class="tag">${arr.length}</span></div><div class="card-b">${arr.length?`<div class="alist" style="display:flex;flex-direction:column;gap:10px">${arr.map(card).join("")}</div>`:`<div class="hint">${empty}</div>`}</div></div>`;
   return head+sec("예정된 회의",sched,"예정된 회의가 없습니다.")+meetingHistoryTimeline(done);
 }
 function mts(dateStr){ const p=(dateStr||"").split("-").map(Number); return p.length===3?new Date(p[0],p[1]-1,p[2]).getTime():Date.parse(dateStr); }
-function mDispDT(m){ return mdisp(m.date)+(m.time?` ${m.time}`:""); }
-function mtsFull(m){ const base=mts(m.date); if(!m.time) return base; const [h,mi]=m.time.split(":").map(Number); return base+((h||0)*3600000+(mi||0)*60000); }
 function meetingHistoryTimeline(done){
   const g=session.mgantt;
   const toolbar=`<div class="g-toolbar">
@@ -2759,7 +2839,7 @@ function meetingHistoryTimeline(done){
   const rowHtml=m=>{ const t=mts(m.date), pct=((t-win.start)/span)*100;
     return `<div class="g-row"><div class="lbl" data-act="open-meeting" data-id="${m.id}"><div class="t">${esc(m.title||m.agenda.split("\n")[0].slice(0,40))}</div><div class="s">${esc(Store.user(m.createdBy)?.name||'')}</div></div>
       <div class="g-track">${tickEls}${todayPct!=null?`<div class="g-today" style="left:${todayPct}%"></div>`:""}
-        <div class="mg-pill" data-act="open-meeting" data-id="${m.id}" style="left:${Math.max(2,Math.min(98,pct))}%" title="${esc(m.title||'')} · ${mDispDT(m)}">${mdisp(m.date).slice(5)}${m.time?` ${m.time}`:""}</div></div></div>`; };
+        <div class="mg-pill" data-act="open-meeting" data-id="${m.id}" style="left:${Math.max(2,Math.min(98,pct))}%" title="${esc(m.title||'')} · ${mdisp(m.date)}">${mdisp(m.date).slice(5)}</div></div></div>`; };
   const groups={}; (g.group==="owner"?inWin:inWin).forEach(m=>{ const k=g.group==="owner"?(Store.user(m.createdBy)?.name||"미지정"):""; (groups[k]=groups[k]||[]).push(m); });
   const head2=`<div class="g-head"><div class="lbl">회의</div><div class="scale" style="position:relative;flex:1;height:14px">${ticks.map(tk=>`<span style="position:absolute;left:${tk.pct}%;transform:translateX(2px)">${tk.label}</span>`).join("")}</div></div>`;
   const body=inWin.length?Object.keys(groups).sort().map(k=>`${g.group!=="none"?`<div class="g-grp">${esc(k)} <span style="font-weight:500;opacity:.7">${groups[k].length}</span></div>`:""}${groups[k].map(rowHtml).join("")}`).join(""):`<div class="g-empty-range">이 기간에 완료된 회의가 없습니다. 기간을 넓히거나 이동해 보세요.</div>`;
@@ -2788,7 +2868,7 @@ function viewMeeting(id){
   return `
   <div class="ph"><div><div class="eb"><span style="cursor:pointer" data-act="goto" data-view="meetings">← 회의 목록</span></div>
     <h2 style="display:inline">${done?'✅ ':''}${esc(title)}</h2> ${done?'<span class="check pass">완료</span>':'<span class="tag">예정</span>'}${(isOwner&&MEETING_EXT_OK)?` <button class="btn btn-ghost btn-sm" data-act="edit-meeting-title" data-id="${m.id}" style="padding:2px 9px;font-size:11px;vertical-align:middle">✏ 회의명 수정</button>`:""}
-    <p><span style="font-family:var(--fm)">${mDispDT(m)}</span>${(isOwner||role==="manager")?` <button class="btn btn-ghost btn-sm" data-act="edit-meeting-time" data-id="${m.id}" style="padding:2px 9px;font-size:11px;margin-left:4px">🕒 일정 수정</button>`:""} · 작성 ${esc(Store.user(m.createdBy)?.name||"-")}${done&&m.doneAt?` · 완료 ${fmtDT(m.doneAt)}`:""}</p></div>
+    <p><span style="font-family:var(--fm)">${mdisp(m.date)}</span> · 작성 ${esc(Store.user(m.createdBy)?.name||"-")}${done&&m.doneAt?` · 완료 ${fmtDT(m.doneAt)}`:""}</p></div>
     ${canDel?`<div class="right"><button class="btn btn-warn btn-sm" data-act="del-meeting" data-id="${m.id}">삭제</button></div>`:""}</div>
   <div class="split"><div>
     <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>회의록</h3></div><div class="card-b">${minutesBlock}${canWrite?aiMeetingPanel(m):""}</div></div>
@@ -2803,35 +2883,22 @@ function openMeetingModal(){
   Modal.open({title:"새 회의",okLabel:"생성",body:`
     ${MEETING_EXT_OK?`<label class="fld"><span class="lab">회의명 <span class="hint">필수</span></span><input type="text" id="mt_title" placeholder="예) 6월 마케팅 정기회의"></label>`:""}
     <label class="fld"><span class="lab">회의일자 <span class="hint">필수</span></span><input type="date" id="mt_date" value="${new Date().toISOString().slice(0,10)}"></label>
-    ${MEETING_TIME_OK?`<label class="fld"><span class="lab">회의시간 <span class="hint">선택 · 5분 단위</span></span><input type="time" id="mt_time" step="300" value="09:00"></label>`:""}
     <label class="fld"><span class="lab">안건 <span class="hint">필수</span></span><textarea id="mt_agenda" rows="3" placeholder="회의 안건"></textarea></label>
     <label class="fld"><span class="lab">참석자 <span class="hint">필수 · 이름을 쉼표로 구분</span></span><input type="text" id="mt_att" placeholder="예) 형지수, 최효선, 노현서"></label>
     <label class="fld"><span class="lab">첨부 <span class="hint">선택</span></span><input type="file" id="mt_file" accept="image/*,video/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"></label>`,
     submit:async()=>{
       const title=MEETING_EXT_OK?val("mt_title").trim():"";
       const date=val("mt_date"), agenda=val("mt_agenda").trim(), attendees=val("mt_att").trim();
-      const time=(MEETING_TIME_OK&&document.getElementById("mt_time"))?val("mt_time"):"";
       if(MEETING_EXT_OK && !title){ toast("회의명을 입력하세요"); return false; }
       if(!date){ toast("회의일자를 선택하세요"); return false; }
       if(!agenda){ toast("안건을 입력하세요"); return false; }
       if(!attendees){ toast("참석자를 입력하세요"); return false; }
       let att=null; const f=document.getElementById("mt_file").files[0];
       if(f){ att=await uploadOne(f); if(att===null) return false; }
-      const m={id:Store.uid(),title,date,time,agenda,attendees,fileData:att?att.fileData:null,fileName:att?att.fileName:null,fileMime:att?att.fileMime:null,minutes:"",status:"scheduled",doneAt:null,createdBy:me().id,createdAt:Date.now()};
+      const m={id:Store.uid(),title,date,agenda,attendees,fileData:att?att.fileData:null,fileName:att?att.fileName:null,fileMime:att?att.fileMime:null,minutes:"",status:"scheduled",doneAt:null,createdBy:me().id,createdAt:Date.now()};
       if(!(await Store.addMeeting(m))){ toast("회의 생성 실패 — 다시 시도하세요"); return false; }
       toast("회의가 생성되었습니다"); session.route={view:"meeting",id:m.id}; render();
     }});
-}
-function openMeetingTimeModal(id){
-  const m=Store.meeting(id); if(!m) return;
-  if(!(m.createdBy===me().id||me().role==="manager")){ toast("회의 일정은 만든 사람 또는 팀장만 수정할 수 있습니다"); return; }
-  Modal.open({title:"회의 일정 수정",okLabel:"저장",body:`
-    <label class="fld"><span class="lab">회의일자</span><input type="date" id="me_date" value="${esc(m.date||"")}"></label>
-    ${MEETING_TIME_OK?`<label class="fld"><span class="lab">회의시간 <span class="hint">선택 · 5분 단위</span></span><input type="time" id="me_time" step="300" value="${esc(m.time||"")}"></label>`:`<div class="hint">시간 기능을 쓰려면 supabase_meeting_time.sql을 실행하세요.</div>`}`,
-    submit:async()=>{ const date=val("me_date"); if(!date){ toast("회의일자를 선택하세요"); return false; }
-      const time=(MEETING_TIME_OK&&document.getElementById("me_time"))?val("me_time"):(m.time||"");
-      const patch={mdate:date}; if(MEETING_TIME_OK) patch.mtime=time||null;
-      if(await Store.update("meetings",id,patch,()=>{ m.date=date; m.time=MEETING_TIME_OK?time:m.time; })){ toast("회의 일정이 변경되었습니다"); render(); } else { toast("저장 실패"); return false; } }});
 }
 function openMeetingTitleModal(id){
   const m=Store.meeting(id); if(!m) return;
@@ -2898,8 +2965,9 @@ function navConfig(){
   base.push({view:"meetings",ic:"📋",label:"회의"});
   base.push({view:"generator",ic:"🎨",label:"생성기"});
   base.push({view:"ads",ic:"📈",label:"광고 분석"});
+  base.push({view:"content",ic:"📱",label:"콘텐츠 성과"});
   if(role!=="member") base.push({view:"stats",ic:"▤",label:"운영 통계"});
-  base.push({view:"library",ic:"💬",label:"피드백 라이브러리"});
+  if(role!=="member") base.push({view:"library",ic:"💬",label:"피드백 라이브러리"});
   if(mgrLike) base.push({view:"notify",ic:"🔔",label:"알림 설정"});
   if(mgrLike) base.push({view:"access",ic:"🧾",label:"접속로그"});
   if(role==="manager") base.push({view:"cleanup",ic:"🧹",label:"파일 정리"});
@@ -2941,6 +3009,7 @@ function render(){
   else if(v==="brand") html=viewBrands();
   else if(v==="generator") html=viewGenerator();
   else if(v==="ads") html=viewAds();
+  else if(v==="content") html=viewContent();
   else if(v==="access") html=viewAccessLog();
   else if(v==="cleanup") html=viewStorageCleanup();
   document.getElementById("content").innerHTML=html;
@@ -2951,6 +3020,7 @@ function render(){
   if(v==="gantt") wireGantt();
   if(v==="meetings") wireGantt();
   if(v==="task") wireAssetReorder();
+  if(v==="content"){ const ps=document.getElementById("c_period"); if(ps) ps.onchange=()=>{ session.contentPeriod=ps.value; render(); }; }
   // 필터 입력 연결 (업무 뷰)
   if(v==="tasks"){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
@@ -3020,10 +3090,7 @@ const InApp={
   setSound(v){ try{ localStorage.setItem("notifSound", v?"1":"0"); }catch(e){} },
   mine(){ return Store.notifsAll().filter(n=>n.recipientId===me().id && (n.channel==="email"||!n.channel)); }, // 이벤트당 1건
   unread(){ const ls=this.lastSeen(); return this.mine().filter(n=>n.sentAt>ls).length; },
-  beep(){ if(!this.soundOn()) return; try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(); const now=c.currentTime;
-      const tone=(freq,start,dur,peak)=>{ const o=c.createOscillator(),g=c.createGain(); o.connect(g); g.connect(c.destination); o.type="triangle"; o.frequency.value=freq; g.gain.setValueAtTime(.0001,now+start); g.gain.exponentialRampToValueAtTime(peak,now+start+.02); g.gain.exponentialRampToValueAtTime(.0001,now+start+dur); o.start(now+start); o.stop(now+start+dur+.02); };
-      tone(880,0,.30,.6); tone(1174,.16,.36,.6);   // 띵-동 (두 음, 크게)
-      setTimeout(()=>{try{c.close();}catch(e){}},1000); }catch(e){} }
+  beep(){ if(!this.soundOn()) return; try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(); const o=c.createOscillator(), g=c.createGain(); o.connect(g); g.connect(c.destination); o.type="sine"; o.frequency.value=660; g.gain.setValueAtTime(.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(.15,c.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.35); o.start(); o.stop(c.currentTime+.36); setTimeout(()=>{try{c.close();}catch(e){}},600); }catch(e){} }
 };
 function updateNotifChrome(){
   const badge=document.getElementById("notifBadge"); const n=me()?InApp.unread():0;
@@ -3043,7 +3110,7 @@ function renderNotifPanel(){ const p=document.getElementById("notifPanel"); if(!
       <div class="nrow-d">${fmtDT(n.sentAt)}</div></div>`; }).join("")
     :`<div class="nrow-empty">받은 알림이 없습니다.</div>`;
   p.innerHTML=`<div class="np-h"><b>알림</b><label class="np-snd"><input type="checkbox" id="np_sound" ${InApp.soundOn()?"checked":""}> 소리</label></div><div class="np-list">${rows}</div>`;
-  const sc=document.getElementById("np_sound"); if(sc) sc.onchange=()=>{ InApp.setSound(sc.checked); if(sc.checked) InApp.beep(); };
+  const sc=document.getElementById("np_sound"); if(sc) sc.onchange=()=>InApp.setSound(sc.checked);
 }
 const PCNotify={
   supported(){ return typeof Notification!=="undefined"; },
@@ -3119,7 +3186,6 @@ function openAiCfg(){
     <div id="ai_servernote" class="callout" style="${AI.mode==="server"?"":"display:none"};margin-bottom:12px;font-size:12px">서버 경유는 키를 <b>Edge Function 비밀값(OPENAI_API_KEY)</b>으로 보관합니다. 앱에는 키를 넣지 않습니다. 함수 배포·비밀값 설정은 함께 드린 가이드(<b>edge_ai-proxy 가이드</b>)를 따르세요.</div>
     <label class="fld"><span class="lab">모델</span><select id="ai_model">
       <option value="gpt-4o-mini" ${AI.model==="gpt-4o-mini"?"selected":""}>gpt-4o-mini (빠름·저렴)</option>
-      <option value="gpt-4o-mini-2024-07-18" ${AI.model==="gpt-4o-mini-2024-07-18"?"selected":""}>gpt-4o-mini-2024-07-18 (버전 고정 · 권장)</option>
       <option value="gpt-4o" ${AI.model==="gpt-4o"?"selected":""}>gpt-4o (품질 우선)</option></select></label>
     <label class="chip" style="display:block;margin-bottom:14px"><input type="checkbox" id="ai_real" ${AI.useReal?"checked":""} style="position:static;opacity:1;width:auto;margin-right:8px;vertical-align:middle"><span style="border:0;padding:0;color:var(--ink);font-weight:600">실제 OpenAI 호출 사용</span></label>
     <div class="warnbox">팀 공용으로 저장되어 <b>로그인한 팀장·실무자 모두 자동 사용</b>합니다. <b>OpenAI 대시보드에서 월 사용 한도(usage limit)</b>를 설정해 두세요.</div>`,
