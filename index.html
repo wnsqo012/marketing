@@ -485,6 +485,7 @@ let ASSET_PAGES_OK=false;   // pages 컬럼 존재 시 true (카드뉴스 묶음
 let ASSET_SORT_OK=false;    // sort_no 컬럼 존재 시 true (산출물 순서)
 let ASSET_PHASES_OK=false;  // phases 컬럼 존재 시 true (영상 단계 기간)
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
+let TASK_REVIEWERS_OK=false; // task_reviewers 테이블 존재 시 true (공동검수자)
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_ATT_OK=false;   // meetings.attendee_ids 컬럼 존재 시 true (참석자 계정)
 let MEETING_TIME_OK=false;  // meetings.mtime 컬럼 존재 시 true (회의 시간)
@@ -517,8 +518,8 @@ const Maps={
     to:a=>({id:a.id,ts:iso(a.ts),actor_id:a.actorId,task_id:a.taskId,type:a.type,message:a.message})},
   accessLog:{from:r=>({id:r.id,userId:r.user_id,event:r.event,userAgent:r.user_agent,createdAt:Date.parse(r.created_at)}),
     to:l=>({id:l.id,user_id:l.userId,event:l.event,user_agent:l.userAgent||null,created_at:iso(l.createdAt)})},
-  taskMember:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null}),
-    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null})},
+  taskMember:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null}),    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null})},
+  taskReviewer:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null,assignedBy:r.assigned_by}),    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null,assigned_by:m.assignedBy||null})},
   meeting:{from:r=>({id:r.id,title:r.title||"",date:r.mdate,time:r.mtime||"",agenda:r.agenda,attendees:r.attendees,attendeeIds:Array.isArray(r.attendee_ids)?r.attendee_ids:[],fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,minutes:r.minutes||"",status:r.status||"scheduled",doneAt:r.done_at?Date.parse(r.done_at):null,createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
     to:m=>{const o={id:m.id,mdate:m.date,agenda:m.agenda,attendees:m.attendees,file_url:m.fileData||null,file_name:m.fileName||null,file_mime:m.fileMime||null,minutes:m.minutes||null,status:m.status||"scheduled",done_at:m.doneAt?iso(m.doneAt):null,created_by:m.createdBy,created_at:iso(m.createdAt)}; if(m.title) o.title=m.title; if(m.time) o.mtime=m.time; if(m.attendeeIds&&m.attendeeIds.length) o.attendee_ids=m.attendeeIds; return o;}},
   meetingComment:{from:r=>({id:r.id,meetingId:r.meeting_id,authorId:r.author_id,body:r.body||"",fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,createdAt:Date.parse(r.created_at)}),
@@ -562,7 +563,7 @@ async function guardedUpdate(table, id, patch, applyLocal){
 const Store = (()=>{
   let db;
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(36).slice(2,8));
-  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],meetings:[],meetingComments:[]}; }
+  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],meetings:[],meetingComments:[]}; }
   async function loadAll(){
     db=blank();
     const get=async(table,from)=>{ const {data,error}=await sb.from(table).select("*"); if(error)throw error; return (data||[]).map(from); };
@@ -591,6 +592,7 @@ const Store = (()=>{
     try{ db.contentMetrics=await get("content_metrics",Maps.contentMetric.from); CONTENT_OK=true; }catch(e){ db.contentMetrics=[]; CONTENT_OK=false; }
     try{ db.accessLogs=await get("access_logs",Maps.accessLog.from); }catch(e){ db.accessLogs=[]; }
     try{ db.taskMembers=await get("task_members",Maps.taskMember.from); TASK_MEMBERS_OK=true; }catch(e){ db.taskMembers=[]; TASK_MEMBERS_OK=false; }
+    try{ db.taskReviewers=await get("task_reviewers",Maps.taskReviewer.from); TASK_REVIEWERS_OK=true; }catch(e){ db.taskReviewers=[]; TASK_REVIEWERS_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("attendee_ids").limit(1); MEETING_ATT_OK=!error; }catch(e){ MEETING_ATT_OK=false; } }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("mtime").limit(1); MEETING_TIME_OK=!error; }catch(e){ MEETING_TIME_OK=false; } }
@@ -676,6 +678,17 @@ const Store = (()=>{
       const at=done?Date.now():null;
       const {error}=await sb.from("task_members").update({done,done_at:at?iso(at):null}).eq("task_id",tid).eq("user_id",uid);
       if(error){console.warn(error.message);return false;} m.done=done; m.doneAt=at; return true; },
+    // ---- 공동검수자 ----
+    reviewersOf:tid=>db.taskReviewers.filter(r=>r.taskId===tid),
+    isReviewer:(tid,uid)=>db.taskReviewers.some(r=>r.taskId===tid&&r.userId===uid),
+    async addReviewer(tid,uid){ if(db.taskReviewers.some(r=>r.taskId===tid&&r.userId===uid)) return true;
+      const row={taskId:tid,userId:uid,done:false,doneAt:null,assignedBy:me().id};
+      const {error}=await sb.from("task_reviewers").insert(Maps.taskReviewer.to(row)); if(error){toast("지정 실패: "+error.message.slice(0,50));return false;} db.taskReviewers.push(row); return true; },
+    async removeReviewer(tid,uid){ const {error}=await sb.from("task_reviewers").delete().eq("task_id",tid).eq("user_id",uid); if(error){toast("해제 실패: "+error.message.slice(0,50));return false;} db.taskReviewers=db.taskReviewers.filter(r=>!(r.taskId===tid&&r.userId===uid)); return true; },
+    async setReviewerDone(tid,uid,done){ const r=db.taskReviewers.find(x=>x.taskId===tid&&x.userId===uid); if(!r) return false;
+      const at=done?Date.now():null;
+      const {error}=await sb.from("task_reviewers").update({done,done_at:at?iso(at):null}).eq("task_id",tid).eq("user_id",uid);
+      if(error){toast("저장 실패: "+error.message.slice(0,50));return false;} r.done=done; r.doneAt=at; return true; },
     addAsset:a=>optimisticInsert(db.assets,a,"assets",Maps.asset.to),
     addVersion:v=>optimisticInsert(db.versions,v,"versions",Maps.version.to),
     addReview:r=>optimisticInsert(db.reviews,r,"reviews",Maps.review.to),
@@ -1106,7 +1119,21 @@ const Notify=(()=>{
       await Store.addNotif(log);
     }
   }
-  return {send, deadlineCheck, taskUrl, testEmail, notifyNewPost, notifyNewComment, sendReviewEvent, notifyMeeting};
+  // 공동검수자 지정 알림
+  async function notifyCoreview(task, userIds){
+    const body=`[${task.title||"업무"}] 공동검수자로 지정되었습니다 — 열람·검수 의견을 남겨주세요`;
+    const ids=[...new Set((userIds||[]).filter(id=>id && id!==me().id))];
+    for(const uid of ids){ const u=Store.user(uid); if(!u) continue;
+      await Store.addNotif({id:Store.uid(),type:"coreview_requested",taskId:task.id,recipientId:uid,recipientRole:u.role,channel:"email",message:body,status:"queued",errorMessage:null,sentAt:Date.now()}); }
+  }
+  // 공동검수 완료 → 팀장에게 알림
+  async function notifyCoreviewDone(task, reviewerId){
+    const who=Store.user(reviewerId)?.name||"공동검수자";
+    const body=`[${task.title||"업무"}] ${who}님이 검수를 완료했습니다 — 최종 승인/반려를 진행해 주세요`;
+    const mgrs=Store.db.users.filter(u=>u.role==="manager"&&u.id!==me().id);
+    for(const u of mgrs){ await Store.addNotif({id:Store.uid(),type:"coreview_done",taskId:task.id,recipientId:u.id,recipientRole:u.role,channel:"email",message:body,status:"queued",errorMessage:null,sentAt:Date.now()}); }
+  }
+  return {send, deadlineCheck, taskUrl, testEmail, notifyNewPost, notifyNewComment, sendReviewEvent, notifyMeeting, notifyCoreview, notifyCoreviewDone};
 })();
 
 /* =====================================================================
@@ -1224,7 +1251,7 @@ function visibleTasks(){ // 업무 메뉴 가시 범위 (간트는 별도)
   const u=me(), all=Store.db.tasks;
   if(u.role==="manager"||u.role==="viewer") return all.filter(t=>t.status!=="revision"); // 팀장/모니터링: 반려 제외 전체
   if(u.role==="executive") return all.filter(t=>STATUS[t.status].idx>=STATUS.exec_review.idx);
-  return all.filter(t=>t.ownerId===u.id || Store.membersOf(t.id).some(m=>m.userId===u.id)); // 실무자: 본인 소유 + 공동 담당 업무
+  return all.filter(t=>t.ownerId===u.id || Store.membersOf(t.id).some(m=>m.userId===u.id) || Store.isReviewer(t.id,u.id)); // 실무자: 본인 소유 + 공동 담당 + 공동검수 업무
 }
 function filtered(list){
   const f=session.filters;
@@ -1389,6 +1416,8 @@ function viewTask(id){
         ${["member","manager"].includes(role)?`<button class="btn btn-ghost btn-sm" ${assets.some(a=>(a.fileMime||"").startsWith("image/"))?"":'style="margin-left:auto"'} data-act="add-asset" data-id="${t.id}">+ 산출물</button>`:""}</div>
         <div class="card-b">${assets.length?`<div class="alist" id="asset-list" data-task="${t.id}">${assets.map(a=>assetCard(a)).join("")}</div>`:C.empty("📎","산출물 없음","‘+ 산출물’로 결과물을 등록하세요.")}</div></div>
 
+      ${coReviewBlock(t, role)}
+
       <!-- 검토 요약 -->
       ${STATUS[t.status].idx>=STATUS.manager_review.idx?`
       <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>검토 요약 (AI)</h3>
@@ -1448,8 +1477,39 @@ function assetCard(a){
       ${vs.map(v=>`<div class="ver"><span class="vn">v${v.no}</span><div><div>${esc(v.changes)}</div><div class="hint">${esc(v.reason)} · ${esc(Store.user(v.editorId)?.name||'')} · ${fmtDate(v.createdAt)}</div></div></div>`).join("")}</details>
   </div>`;
 }
+function coReviewBlock(t, role){
+  if(!TASK_REVIEWERS_OK) return "";
+  const revs=Store.reviewersOf(t.id);
+  const iAmR=Store.isReviewer(t.id, me().id);
+  const canAssign = role==="manager" && t.status==="manager_review";
+  if(!revs.length && !canAssign && !iAmR) return "";
+  const list = revs.length
+    ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">${revs.map(r=>{const u=Store.user(r.userId);return `<div class="row" style="justify-content:space-between;gap:8px"><span>👀 ${esc(u?.name||'-')}</span><span class="row" style="gap:6px">${r.done?'<span class="check pass">검수 완료</span>':'<span class="tag">검수 중</span>'}${role==="manager"?`<button class="btn btn-ghost btn-sm" data-act="remove-reviewer" data-id="${t.id}" data-uid="${r.userId}" style="padding:1px 7px;font-size:11px">해제</button>`:""}</span></div>`;}).join("")}</div>`
+    : `<div class="hint" style="margin-bottom:8px">아직 지정된 공동검수자가 없습니다.</div>`;
+  const mgrBtn = canAssign?`<button class="btn btn-ghost btn-sm" style="width:100%" data-act="assign-reviewers" data-id="${t.id}">+ 공동검수자 지정</button>`:"";
+  let myBox="";
+  if(iAmR){
+    const mine=revs.find(r=>r.userId===me().id);
+    myBox=`<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="lab" style="margin-bottom:5px">내 검수 의견</div>
+      <textarea id="crev_${t.id}" rows="3" placeholder="검수 의견을 남기세요"></textarea>
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" data-act="coreview-comment" data-id="${t.id}">의견 등록</button>
+      ${mine&&mine.done
+        ? `<div class="callout" style="margin-top:8px">✓ 검수 완료로 표시했습니다. 팀장이 최종 승인/반려합니다.</div>`
+        : `<button class="btn btn-ok btn-sm" style="width:100%;margin-top:6px" data-act="coreview-done" data-id="${t.id}">✓ 검수 완료</button>`}
+      <div class="hint" style="margin-top:6px">공동검수자는 열람·의견만 남깁니다. 승인·반려는 팀장이 합니다.</div>
+    </div>`;
+  }
+  return `<div class="card" style="margin-bottom:18px"><div class="card-h"><h3>공동 검수</h3>${revs.length?`<span class="tag">${revs.filter(r=>r.done).length}/${revs.length} 완료</span>`:""}</div>
+    <div class="card-b">${list}${mgrBtn}${myBox}</div></div>`;
+}
 function reviewRow(r){
   const u=Store.user(r.reviewerId);
+  if(r.role==="co_reviewer"){
+    return `<div style="border-bottom:1px solid var(--line);padding:9px 0;font-size:12.5px">
+      <div class="row" style="gap:7px"><b>${esc(u?.name||'')}</b><span class="tag" style="background:var(--primary-soft);color:var(--primary)">공동검수자 의견</span><span class="hint" style="margin-left:auto">${fmtDate(r.createdAt)}</span></div>
+      ${r.comment?`<div style="margin-top:4px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.55">${esc(r.comment)}</div>`:""}</div>`;
+  }
   return `<div style="border-bottom:1px solid var(--line);padding:9px 0;font-size:12.5px">
     <div class="row" style="gap:7px"><b>${esc(u?.name||'')}</b><span class="check ${r.decision==='approved'?'pass':'warn'}">${r.decision==='approved'?'✓ 승인':'반려'}</span>${r.cat?`<span class="tag">${esc(r.cat)}</span>`:""}</div>
     ${r.detail?`<div style="margin-top:4px;color:var(--warn)">${esc(r.detail)}</div>`:""}
@@ -1696,6 +1756,14 @@ const Actions={
     if(await Store.setDone(t.id,me().id,nd)){ Store.log(me().id,t.id,"status",nd?"작업을 완료 표시했습니다":"완료 표시를 취소했습니다"); toast(nd?"완료 표시":"완료 취소"); render(); }
     else toast("처리 실패 — 다시 시도하세요"); },
   "manage-members"(el){ openMembersModal(el.dataset.id); },
+  "assign-reviewers"(el){ openReviewerModal(el.dataset.id); },
+  async "remove-reviewer"(el){ const tid=el.dataset.id, uid=el.dataset.uid; if(confirm("이 공동검수자를 해제할까요?")){ if(await Store.removeReviewer(tid,uid)){ Store.log(me().id,tid,"review","공동검수자를 해제했습니다"); toast("해제되었습니다"); render(); } } },
+  async "coreview-comment"(el){ const id=el.dataset.id; const ta=document.getElementById("crev_"+id); const txt=(ta&&ta.value||"").trim(); if(!txt){ toast("의견을 입력하세요"); return; }
+    if(!Store.isReviewer(id,me().id)){ toast("공동검수자만 의견을 남길 수 있습니다"); return; }
+    const rev={id:Store.uid(),taskId:id,reviewerId:me().id,role:"co_reviewer",decision:null,checklist:null,cat:null,detail:null,comment:txt,createdAt:Date.now()};
+    await Store.addReview(rev); Store.log(me().id,id,"review","공동검수 의견을 남겼습니다"); toast("의견을 등록했습니다"); render(); },
+  async "coreview-done"(el){ const id=el.dataset.id; if(!Store.isReviewer(id,me().id)) return;
+    if(await Store.setReviewerDone(id,me().id,true)){ Store.log(me().id,id,"review","검수 완료로 표시했습니다"); await Notify.notifyCoreviewDone(Store.task(id), me().id); toast("검수 완료로 표시했습니다"); render(); } },
   "new-meeting"(){ openMeetingModal(); },
   "edit-meeting-title"(el){ openMeetingTitleModal(el.dataset.id); },
   "edit-meeting-time"(el){ openMeetingTimeModal(el.dataset.id); },
@@ -1861,6 +1929,30 @@ async function resolveCustomBrand(name){
   const ex=Store.db.brands.find(x=>x.name===name); if(ex) return ex.id;
   const b={id:Store.uid(),name,goal:name+" 브랜드 인지도 확대 및 마케팅 성과 창출",tone:"직접 입력 브랜드"};
   const ok=await Store.addBrand(b); return ok?b.id:null;
+}
+function openReviewerModal(tid){
+  const t=Store.task(tid); if(!t) return;
+  if(me().role!=="manager"){ toast("공동검수자는 팀장만 지정할 수 있습니다"); return; }
+  const cur=Store.reviewersOf(tid);
+  const memberIds=Store.membersOf(tid).map(m=>m.userId);
+  // 후보: 실무자 중 소유자·공동담당자 제외(제작자가 아닌 '타 실무자')
+  const candidates=Store.db.users.filter(u=>u.role==="member" && u.id!==t.ownerId && !memberIds.includes(u.id));
+  Modal.open({title:"공동검수자 지정",okLabel:"저장",body:`
+    <p class="hint" style="margin-top:0">체크한 실무자가 이 업무의 <b>공동검수자</b>가 됩니다. 지정되면 이 업무를 열람하고 검수 의견을 남길 수 있어요(승인·반려는 팀장만). 지정 시 인앱 알림이 갑니다.</p>
+    <div class="chips" id="rv_list">${candidates.map(u=>{const on=cur.some(r=>r.userId===u.id); return `<label class="chip"><input type="checkbox" value="${u.id}" ${on?"checked":""}><span>${esc(u.name)}</span></label>`;}).join("")||`<span class="hint">지정 가능한 다른 실무자가 없습니다.</span>`}</div>`,
+    submit:async()=>{
+      const checked=new Set([...document.querySelectorAll('#rv_list input:checked')].map(i=>i.value));
+      const curSet=new Set(cur.map(r=>r.userId));
+      const toAdd=[...checked].filter(u=>!curSet.has(u));
+      const toRemove=[...curSet].filter(u=>!checked.has(u));
+      let ok=true;
+      for(const u of toAdd){ if(!(await Store.addReviewer(tid,u))) ok=false; }
+      for(const u of toRemove){ if(!(await Store.removeReviewer(tid,u))) ok=false; }
+      if(!ok){ toast("일부 변경 실패 — 권한/네트워크 확인"); }
+      if(toAdd.length){ Store.log(me().id,tid,"review",`공동검수자 ${toAdd.length}명을 지정했습니다`); await Notify.notifyCoreview(t, toAdd); }
+      if(toRemove.length) Store.log(me().id,tid,"review",`공동검수자 ${toRemove.length}명을 해제했습니다`);
+      toast("공동검수자 저장됨"); render();
+    }});
 }
 function openMembersModal(tid){
   const t=Store.task(tid); if(!t) return;
@@ -3146,8 +3238,8 @@ async function afterAuth(){
 }
 // ===== Supabase Realtime: 업무 변경 시 새로고침 없이 화면/카운트 갱신 =====
 // ===== PC 브라우저 알림(우측 하단 팝업) =====
-const NOTIF_LABEL={task_created:"새 업무",task_created_me:"내 업무 등록",review_requested:"검토 요청",review_resubmitted:"재검토 요청",review_submitted:"검토 요청 접수",review_resubmitted_me:"재검토 접수",approved:"승인됨",rejected:"반려됨",exec_decision:"대표 결정",post_created:"새 공지·글",comment_added:"새 댓글",due_soon:"마감 임박",overdue:"마감 초과",meeting_invited:"회의 참석 요청"};
-function notifBodyText(r){ if(r.type==="meeting_invited") return r.message||"회의에 참석자로 지정되었습니다"; const t=r.task_id?Store.task(r.task_id):null;
+const NOTIF_LABEL={task_created:"새 업무",task_created_me:"내 업무 등록",review_requested:"검토 요청",review_resubmitted:"재검토 요청",review_submitted:"검토 요청 접수",review_resubmitted_me:"재검토 접수",approved:"승인됨",rejected:"반려됨",exec_decision:"대표 결정",post_created:"새 공지·글",comment_added:"새 댓글",due_soon:"마감 임박",overdue:"마감 초과",meeting_invited:"회의 참석 요청",coreview_requested:"검수 요청",coreview_done:"검수 완료"};
+function notifBodyText(r){ if(r.type==="meeting_invited") return r.message||"회의에 참석자로 지정되었습니다"; if(r.type==="coreview_requested"||r.type==="coreview_done") return r.message||"공동검수 알림"; const t=r.task_id?Store.task(r.task_id):null;
   return (t?`[${t.title}] `:"")+(r.type==="approved"?"승인되었습니다":r.type==="rejected"?"반려되었습니다":(r.type==="review_requested"||r.type==="review_resubmitted")?"검토가 필요합니다":r.type==="comment_added"?"새 댓글이 있습니다":r.type==="post_created"?"새 글이 등록되었습니다":r.type==="task_created"?"새 업무가 등록되었습니다":"확인해 주세요"); }
 // ===== 인앱 알림센터 (권한 불필요) =====
 const InApp={
