@@ -23,6 +23,7 @@
     --s-exec2:#3a8a7a;--s-exec2-bg:#ddf0eb;
     --s-done:#4a4f5a; --s-done-bg:#e6e8ec;
     --warn:#c1573f; --warn-bg:#f8e3dc; --ok:#2f7d5b; --ok-bg:#dff0e7;
+    --vac:#7c6bb0; --vac-bg:#ece7f6;
     --radius:13px; --shadow:0 1px 2px rgba(20,24,30,.04),0 6px 20px -14px rgba(20,24,30,.3);
     --shadow-lg:0 24px 60px -20px rgba(20,24,30,.4);
     --fd:"Fraunces",Georgia,serif; --fu:"Inter",system-ui,sans-serif; --fm:"JetBrains Mono",ui-monospace,monospace;
@@ -486,6 +487,7 @@ let ASSET_SORT_OK=false;    // sort_no 컬럼 존재 시 true (산출물 순서)
 let ASSET_PHASES_OK=false;  // phases 컬럼 존재 시 true (영상 단계 기간)
 let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let TASK_REVIEWERS_OK=false; // task_reviewers 테이블 존재 시 true (공동검수자)
+let VAC_OK=false;           // vacations 테이블 존재 시 true (개인 휴가)
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_ATT_OK=false;   // meetings.attendee_ids 컬럼 존재 시 true (참석자 계정)
 let MEETING_TIME_OK=false;  // meetings.mtime 컬럼 존재 시 true (회의 시간)
@@ -520,6 +522,8 @@ const Maps={
     to:l=>({id:l.id,user_id:l.userId,event:l.event,user_agent:l.userAgent||null,created_at:iso(l.createdAt)})},
   taskMember:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null}),    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null})},
   taskReviewer:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null,assignedBy:r.assigned_by}),    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null,assigned_by:m.assignedBy||null})},
+  vacation:{from:r=>({id:r.id,userId:r.user_id,start:r.start_date,end:r.end_date,memo:r.memo||"",createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
+    to:v=>({id:v.id,user_id:v.userId,start_date:v.start,end_date:v.end,memo:v.memo||null,created_by:v.createdBy||null,created_at:iso(v.createdAt)})},
   meeting:{from:r=>({id:r.id,title:r.title||"",date:r.mdate,time:r.mtime||"",agenda:r.agenda,attendees:r.attendees,attendeeIds:Array.isArray(r.attendee_ids)?r.attendee_ids:[],fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,minutes:r.minutes||"",status:r.status||"scheduled",doneAt:r.done_at?Date.parse(r.done_at):null,createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
     to:m=>{const o={id:m.id,mdate:m.date,agenda:m.agenda,attendees:m.attendees,file_url:m.fileData||null,file_name:m.fileName||null,file_mime:m.fileMime||null,minutes:m.minutes||null,status:m.status||"scheduled",done_at:m.doneAt?iso(m.doneAt):null,created_by:m.createdBy,created_at:iso(m.createdAt)}; if(m.title) o.title=m.title; if(m.time) o.mtime=m.time; if(m.attendeeIds&&m.attendeeIds.length) o.attendee_ids=m.attendeeIds; return o;}},
   meetingComment:{from:r=>({id:r.id,meetingId:r.meeting_id,authorId:r.author_id,body:r.body||"",fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,createdAt:Date.parse(r.created_at)}),
@@ -563,7 +567,7 @@ async function guardedUpdate(table, id, patch, applyLocal){
 const Store = (()=>{
   let db;
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(36).slice(2,8));
-  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],meetings:[],meetingComments:[]}; }
+  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],vacations:[],meetings:[],meetingComments:[]}; }
   async function loadAll(){
     db=blank();
     const get=async(table,from)=>{ const {data,error}=await sb.from(table).select("*"); if(error)throw error; return (data||[]).map(from); };
@@ -593,6 +597,7 @@ const Store = (()=>{
     try{ db.accessLogs=await get("access_logs",Maps.accessLog.from); }catch(e){ db.accessLogs=[]; }
     try{ db.taskMembers=await get("task_members",Maps.taskMember.from); TASK_MEMBERS_OK=true; }catch(e){ db.taskMembers=[]; TASK_MEMBERS_OK=false; }
     try{ db.taskReviewers=await get("task_reviewers",Maps.taskReviewer.from); TASK_REVIEWERS_OK=true; }catch(e){ db.taskReviewers=[]; TASK_REVIEWERS_OK=false; }
+    try{ db.vacations=await get("vacations",Maps.vacation.from); VAC_OK=true; }catch(e){ db.vacations=[]; VAC_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("attendee_ids").limit(1); MEETING_ATT_OK=!error; }catch(e){ MEETING_ATT_OK=false; } }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("mtime").limit(1); MEETING_TIME_OK=!error; }catch(e){ MEETING_TIME_OK=false; } }
@@ -689,6 +694,10 @@ const Store = (()=>{
       const at=done?Date.now():null;
       const {error}=await sb.from("task_reviewers").update({done,done_at:at?iso(at):null}).eq("task_id",tid).eq("user_id",uid);
       if(error){toast("저장 실패: "+error.message.slice(0,50));return false;} r.done=done; r.doneAt=at; return true; },
+    // ---- 개인 휴가 ----
+    vacationsAll:()=>db.vacations.slice(),
+    async addVacation(v){ const {error}=await sb.from("vacations").insert(Maps.vacation.to(v)); if(error){toast("휴가 저장 실패: "+error.message.slice(0,50));return false;} db.vacations.push(v); return true; },
+    async delVacation(id){ const {error}=await sb.from("vacations").delete().eq("id",id); if(error){toast("삭제 실패: "+error.message.slice(0,50));return false;} db.vacations=db.vacations.filter(v=>v.id!==id); return true; },
     addAsset:a=>optimisticInsert(db.assets,a,"assets",Maps.asset.to),
     addVersion:v=>optimisticInsert(db.versions,v,"versions",Maps.version.to),
     addReview:r=>optimisticInsert(db.reviews,r,"reviews",Maps.review.to),
@@ -1647,6 +1656,8 @@ function latestVersionNote(taskId){
 const Actions={
   goto(el){ session.route={view:el.dataset.view}; render(); },
   "open-task"(el){ session.route={view:"task",id:el.dataset.id}; render(); },
+  "vac-add"(){ openVacationModal(); },
+  async "vac-del"(el){ if(confirm("이 휴가를 삭제할까요?")){ if(await Store.delVacation(el.dataset.id)){ toast("휴가가 삭제되었습니다"); render(); } } },
   "g-range"(el){ const g=el.dataset.gt==="m"?session.mgantt:session.gantt; g.range=el.dataset.range; g.anchor=null; render(); },
   "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
   "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:"",hideExecuted:false}; render(); },
@@ -2466,7 +2477,7 @@ function viewGantt(){
     <div class="g-seg">${[["week","주"],["month","월"],["quarter","분기"],["all","전체"]].map(([k,l])=>`<button data-act="g-range" data-range="${k}" class="${g.range===k?"on":""}">${l}</button>`).join("")}</div>
     ${g.range!=="all"?`<span class="g-nav"><button data-act="g-nav" data-dir="-1">‹</button><b>${ganttLabel(ganttWindow())}</b><button data-act="g-nav" data-dir="1">›</button></span>`:`<span class="g-nav"><b>전체 기간</b></span>`}
     <select class="g-sel" id="g_group"><option value="brand" ${g.group==="brand"?"selected":""}>그룹: 브랜드별</option><option value="owner" ${g.group==="owner"?"selected":""}>그룹: 담당자별</option><option value="none" ${g.group==="none"?"selected":""}>그룹: 없음</option></select>
-    <span style="flex:1"></span><span class="tag">확정 업무 ${all.length}건</span>
+    <span style="flex:1"></span>${VAC_OK?`<button class="btn btn-ghost btn-sm" data-act="vac-add" style="margin-right:8px">🏖 + 휴가 생성</button>`:""}<span class="tag">확정 업무 ${all.length}건</span>
   </div>`;
   // 마감 임박 스트립(D-7 이내 + 마감 초과, 집행완료 전)
   const today=(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})();
@@ -2475,11 +2486,21 @@ function viewGantt(){
   const dueText=d=>d<0?`마감 +${-d}일`:d===0?"D-Day":`D-${d}`;
   const strip=soon.length?`<div class="card" style="margin-bottom:16px"><div class="card-b"><div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:8px">⏰ 마감 임박 (D-7 이내)</div><div class="g-due-strip">${soon.map(({t,diff})=>`<div class="g-due" data-act="open-task" data-id="${t.id}"><span class="dd" style="color:${dueColor(diff)}">${dueText(diff)}</span><span class="tt">${esc(t.title)}</span><span class="mm">${esc(Store.brand(t.brandId)?.name||"-")} · ${esc(Store.user(t.ownerId)?.name||"")}</span></div>`).join("")}</div></div></div>`:"";
 
-  if(!all.length) return `${ph("일정 (간트)","팀장 검토 완료된 확정 업무를 전 팀이 함께 봅니다.")}${toolbar()}<div class="card"><div class="card-b">${C.empty("📊","확정된 일정이 없습니다","팀장 검토 승인을 통과한 업무가 여기에 타임라인으로 표시됩니다.")}</div></div>`;
+  // 휴가 데이터 + 상단 스트립(진행중·예정)
+  const vmts=d=>{const p=(d||"").split("-").map(Number);return p.length===3?new Date(p[0],p[1]-1,p[2]).getTime():Date.parse(d);};
+  const vacs=VAC_OK?Store.vacationsAll().slice():[];
+  const upcoming=vacs.filter(v=>vmts(v.end)>=today).sort((a,b)=>vmts(a.start)-vmts(b.start));
+  const vacStrip=(VAC_OK&&upcoming.length)?`<div class="card" style="margin-bottom:16px"><div class="card-b"><div style="font-size:12px;font-weight:700;color:var(--vac);margin-bottom:8px">🏖 휴가 (진행중·예정)</div><div class="g-due-strip">${upcoming.slice(0,12).map(v=>{const u=Store.user(v.userId);const canDel=me().role==="manager"||v.userId===me().id||v.createdBy===me().id;const ongoing=vmts(v.start)<=today&&today<=vmts(v.end);return `<div class="g-due" style="border-color:var(--vac);${ongoing?'background:var(--vac-bg)':''}"><span class="dd" style="color:var(--vac)">${ongoing?"휴가중":"예정"}</span><span class="tt">${esc(u?.name||"-")}</span><span class="mm">${mdisp(v.start)} ~ ${mdisp(v.end)}${canDel?` · <span style="cursor:pointer;color:var(--warn)" data-act="vac-del" data-id="${v.id}">삭제</span>`:""}</span></div>`;}).join("")}</div></div></div>`:"";
+
+  const hasContent = all.length || (VAC_OK && vacs.length);
+  if(!hasContent) return `${ph("일정 (간트)","팀장 검토 완료된 확정 업무와 팀 휴가를 함께 봅니다.")}${toolbar()}<div class="card"><div class="card-b">${C.empty("📊","표시할 일정이 없습니다","팀장 검토 승인 업무 또는 ‘+ 휴가 생성’으로 등록한 휴가가 여기에 표시됩니다.")}</div></div>`;
 
   // 윈도우 계산
   let win=ganttWindow();
-  if(!win){ const sod=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();}; const mn=sod(Math.min(...all.map(t=>t.start||t.createdAt))); const mx=sod(Math.max(...all.map(t=>t.due)))+day; win={start:mn,end:mx,range:"all",ticks:"month"}; }
+  if(!win){ const sod=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();};
+    const starts=all.map(t=>t.start||t.createdAt).concat(vacs.map(v=>vmts(v.start)));
+    const ends=all.map(t=>t.due).concat(vacs.map(v=>vmts(v.end)));
+    const mn=sod(Math.min(...starts,today)); const mx=sod(Math.max(...ends,today))+day; win={start:mn,end:mx,range:"all",ticks:"month"}; }
   const span=Math.max(day,win.end-win.start);
   const inWin=all.filter(t=>{ const s=t.start||t.createdAt, e=Math.max(t.due,s+day*0.4); return e>=win.start && s<win.end; });
   const todayPct=(today>=win.start&&today<win.end)?((today-win.start)/span)*100:null;
@@ -2503,14 +2524,54 @@ function viewGantt(){
   const body = inWin.length ? Object.keys(groups).sort().map(k=>`${g.group!=="none"?`<div class="g-grp">${esc(k)} <span style="font-weight:500;opacity:.7">${groups[k].length}</span></div>`:""}${groups[k].map(rowHtml).join("")}`).join("")
     : `<div class="g-empty-range">이 기간에 표시할 확정 업무가 없습니다. 기간을 넓히거나 이동해 보세요.</div>`;
 
+  // 휴가 막대(윈도우와 겹치는 것) — 차트 맨 위 '휴가' 그룹
+  const vacIn=vacs.filter(v=>{const s=vmts(v.start),e=vmts(v.end)+day; return e>=win.start && s<win.end;}).sort((a,b)=>vmts(a.start)-vmts(b.start));
+  const vacRow=v=>{ const u=Store.user(v.userId); const s=vmts(v.start), e=vmts(v.end)+day;
+    const left=Math.max(0,((s-win.start)/span)*100), right=Math.min(100,((e-win.start)/span)*100), width=Math.max(2,right-left);
+    const canDel=me().role==="manager"||v.userId===me().id||v.createdBy===me().id;
+    return `<div class="g-row">
+      <div class="lbl"><div class="t">${esc(u?.name||"-")}</div><div class="s">휴가${v.memo?` · ${esc(v.memo)}`:""}</div></div>
+      <div class="g-track">${tickEls}${todayPct!=null?`<div class="g-today" style="left:${todayPct}%"></div>`:""}
+        <div class="g-bar" title="${esc(u?.name||"")} 휴가 (${mdisp(v.start)} ~ ${mdisp(v.end)})" style="left:${left}%;width:${width}%;background:var(--vac)">🏖 ${mdisp(v.start).slice(5)}~${mdisp(v.end).slice(5)}</div>
+      </div>${canDel?`<button class="g-del" data-act="vac-del" data-id="${v.id}" title="휴가 삭제">✕</button>`:`<span style="width:22px"></span>`}</div>`;
+  };
+  const vacBody=(VAC_OK&&vacIn.length)?`<div class="g-grp" style="color:var(--vac)">🏖 휴가 <span style="font-weight:500;opacity:.7">${vacIn.length}</span></div>${vacIn.map(vacRow).join("")}`:"";
+
   return `
   ${ph("일정 (간트)","팀장 검토 완료된 확정 업무를 전 팀이 함께 봅니다. 막대를 누르면 상세로 이동합니다."+(isMgr?" 팀장은 ✕로 삭제할 수 있습니다.":""))}
   ${toolbar()}
   ${strip}
+  ${vacStrip}
   <div class="card"><div class="card-b"><div class="gantt-wrap"><div class="gantt">
     <div class="g-head"><div class="lbl">업무</div><div class="scale" style="position:relative;flex:1;height:14px">${ticks.map(tk=>`<span style="position:absolute;left:${tk.pct}%;transform:translateX(2px)">${tk.label}</span>`).join("")}</div></div>
+    ${vacBody}
     ${body}
   </div></div></div></div>`;
+}
+function openVacationModal(){
+  if(!VAC_OK){ toast("휴가 기능을 쓰려면 supabase_vacations.sql을 실행하세요"); return; }
+  const isMgr=me().role==="manager"||me().role==="executive";
+  const people=Store.db.users.filter(u=>["member","manager","executive"].includes(u.role));
+  const today=new Date().toISOString().slice(0,10);
+  const who = isMgr
+    ? `<label class="fld"><span class="lab">대상</span><select id="v_user">${people.map(u=>`<option value="${u.id}"${u.id===me().id?" selected":""}>${esc(u.name)}</option>`).join("")}</select></label>`
+    : `<input type="hidden" id="v_user" value="${me().id}">`;
+  Modal.open({title:"휴가 생성",okLabel:"등록",body:`
+    ${isMgr?"":`<div class="info" style="margin-bottom:12px">${esc(me().name)} 님의 휴가로 등록됩니다.</div>`}
+    ${who}
+    <div class="grid g2" style="gap:0 16px">
+      <label class="fld"><span class="lab">시작일</span><input type="date" id="v_start" value="${today}"></label>
+      <label class="fld"><span class="lab">종료일</span><input type="date" id="v_end" value="${today}"></label>
+    </div>
+    <label class="fld"><span class="lab">메모 <span class="hint">선택 (예: 연차, 오전 반차)</span></span><input type="text" id="v_memo" placeholder="예) 연차"></label>`,
+    submit:async()=>{
+      const userId=val("v_user")||me().id, s=val("v_start"), e=val("v_end");
+      if(!s||!e){ toast("시작일과 종료일을 선택하세요"); return false; }
+      if(e<s){ toast("종료일은 시작일 이후여야 합니다"); return false; }
+      const v={id:Store.uid(),userId,start:s,end:e,memo:val("v_memo").trim(),createdBy:me().id,createdAt:Date.now()};
+      if(!(await Store.addVacation(v))) return false;
+      toast("휴가가 등록되었습니다"); render();
+    }});
 }
 function wireGantt(){ const sel=document.getElementById("g_group"); if(sel) sel.addEventListener("change",()=>{ session.gantt.group=sel.value; render(); });
   const ms=document.getElementById("mg_group"); if(ms) ms.addEventListener("change",()=>{ session.mgantt.group=ms.value; render(); }); }
