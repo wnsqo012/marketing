@@ -581,8 +581,8 @@ const Maps={
     to:l=>({id:l.id,user_id:l.userId,event:l.event,user_agent:l.userAgent||null,created_at:iso(l.createdAt)})},
   taskMember:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null}),    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null})},
   taskReviewer:{from:r=>({taskId:r.task_id,userId:r.user_id,done:!!r.done,doneAt:r.done_at?Date.parse(r.done_at):null,assignedBy:r.assigned_by}),    to:m=>({task_id:m.taskId,user_id:m.userId,done:!!m.done,done_at:m.doneAt?iso(m.doneAt):null,assigned_by:m.assignedBy||null})},
-  vacation:{from:r=>({id:r.id,userId:r.user_id,start:r.start_date,end:r.end_date,memo:r.memo||"",createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
-    to:v=>({id:v.id,user_id:v.userId,start_date:v.start,end_date:v.end,memo:v.memo||null,created_by:v.createdBy||null,created_at:iso(v.createdAt)})},
+  vacation:{from:r=>({id:r.id,userId:r.user_id,start:r.start_date,end:r.end_date,memo:r.memo||"",halfDay:r.half_day||"",createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
+    to:v=>({id:v.id,user_id:v.userId,start_date:v.start,end_date:v.end,memo:v.memo||null,half_day:v.halfDay||null,created_by:v.createdBy||null,created_at:iso(v.createdAt)})},
   expense:{from:r=>({id:r.id,docDate:r.doc_date,drafter:r.drafter||"",drafterId:r.drafter_id,dept:r.dept||"마케팅팀",reason:r.reason||"",items:Array.isArray(r.items)?r.items:[],memo:r.memo||"",evTax:!!r.ev_tax,evCash:!!r.ev_cash,evEtc:r.ev_etc||"",vendor:r.vendor||"",bank:r.bank||"",account:r.account||"",attachments:r.attachments&&typeof r.attachments==="object"?r.attachments:{},total:+r.total||0,status:r.status||"pending",paidAt:r.paid_at?Date.parse(r.paid_at):null,createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
     to:e=>({id:e.id,doc_date:e.docDate||null,drafter:e.drafter||null,drafter_id:e.drafterId||null,dept:e.dept||null,reason:e.reason||null,items:e.items||[],memo:e.memo||null,ev_tax:!!e.evTax,ev_cash:!!e.evCash,ev_etc:e.evEtc||null,vendor:e.vendor||null,bank:e.bank||null,account:e.account||null,attachments:e.attachments||{},total:e.total||0,status:e.status||"pending",paid_at:e.paidAt?iso(e.paidAt):null,created_by:e.createdBy||null,created_at:iso(e.createdAt)})},
   meeting:{from:r=>({id:r.id,title:r.title||"",date:r.mdate,time:r.mtime||"",agenda:r.agenda,attendees:r.attendees,attendeeIds:Array.isArray(r.attendee_ids)?r.attendee_ids:[],fileData:r.file_url,fileName:r.file_name,fileMime:r.file_mime,minutes:r.minutes||"",status:r.status||"scheduled",doneAt:r.done_at?Date.parse(r.done_at):null,createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
@@ -2564,19 +2564,19 @@ function viewGantt(){
     ? Store.db.users.filter(u=>["member","manager","executive"].includes(u.role)&&u.hireDate)
     : Store.db.users.filter(u=>u.id===me().id&&u.hireDate);
   const isMgrLv=me().role==="manager";
-  const leaveCard=lvUsers.length?`<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>🏖 잔여 연차</h3><span class="hint" style="margin-left:auto">입사일 기준 매월 +1일 · 완료 휴가(평일) 차감</span></div>
+  const leaveCard=lvUsers.length?`<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>🏖 잔여 연차</h3><span class="hint" style="margin-left:auto">입사일 기준 매월 +1일 · 완료 휴가 차감(반차 0.5일)</span></div>
     <div class="card-b" style="overflow-x:auto"><table class="ctab"><thead><tr><th>이름</th><th>입사일</th><th class="num">적립</th><th class="num">사용</th><th class="num">잔여</th><th class="num">예정</th>${isMgrLv?"<th></th>":""}</tr></thead><tbody>
     ${lvUsers.map(u=>{const s=leaveSummary(u,new Date());return `<tr>
       <td>${esc(u.name)}${u.id===me().id?' <span class="tag">나</span>':''}</td>
       <td style="white-space:nowrap">${u.hireDate?mdisp(u.hireDate):"-"}</td>
       <td class="num">${s.accrued}${s.adjust?`<span class="hint"> ${s.adjust>0?"+":""}${s.adjust}</span>`:""}</td>
-      <td class="num">${s.used}</td>
-      <td class="num" style="font-weight:800;color:${s.remain>0?"var(--ok)":s.remain<0?"var(--warn)":"var(--muted)"}">${s.remain}일</td>
-      <td class="num">${s.upcoming?`<span style="color:var(--vac)">${s.upcoming}일</span>`:"-"}</td>
+      <td class="num">${fmtDays(s.used)}</td>
+      <td class="num" style="font-weight:800;color:${s.remain>0?"var(--ok)":s.remain<0?"var(--warn)":"var(--muted)"}">${fmtDays(s.remain)}일</td>
+      <td class="num">${s.upcoming?`<span style="color:var(--vac)">${fmtDays(s.upcoming)}일</span>`:"-"}</td>
       ${isMgrLv?`<td class="num"><button class="btn btn-ghost btn-sm" data-act="leave-edit" data-id="${u.id}" style="padding:2px 8px;font-size:11px">설정</button></td>`:""}
     </tr>`;}).join("")}
     </tbody></table>
-    <div class="hint" style="margin-top:8px">잔여 = 적립 + 조정 − 사용(완료 휴가의 평일 수). ‘예정’은 아직 차감되지 않은 앞으로의 휴가입니다.</div></div></div>`:"";
+    <div class="hint" style="margin-top:8px">잔여 = 적립 + 조정 − 사용. 반차는 0.5일로 차감됩니다. ‘예정’은 아직 차감되지 않은 앞으로의 휴가입니다.</div></div></div>`:"";
 
   // ---- 월 달력 ----
   const now=new Date();
@@ -2595,7 +2595,9 @@ function viewGantt(){
     const ownerName=Store.user(t.ownerId)?.name||"";
     events.push({kind:"task",id:t.id,s,e:Math.max(e,s),label:t.title,colorHex:assigneeColor(ownerName),sub:ownerName}); });
   vacs.forEach(v=>{ const s=sod(vmts(v.start)),e=sod(vmts(v.end));
-    events.push({kind:"vac",id:v.id,s,e:Math.max(e,s),label:(Store.user(v.userId)?.name||"휴가"),color:"--vac",sub:"휴가"}); });
+    const nm=Store.user(v.userId)?.name||"휴가";
+    const halfLabel = v.halfDay==="am" ? " (오전 반차)" : v.halfDay==="pm" ? " (오후 반차)" : "";
+    events.push({kind:"vac",id:v.id,s,e:Math.max(e,s),label:nm+halfLabel,color:"--vac",sub:"휴가"}); });
 
   // 상단 범례: 등록된 담당자 + 이번 달 캘린더에 나타난 담당자 모두 표시
   const legendNames = [];
@@ -2673,7 +2675,7 @@ function openLeaveModal(uid){
     <label class="fld"><span class="lab">입사일 <span class="hint">이 날짜 다음 달부터 매월 +1일 적립</span></span><input type="date" id="lv_hire" value="${u.hireDate||""}"></label>
     <label class="fld"><span class="lab">조정값(±일) <span class="hint">과거 이력 보정용. 예: 이미 2일 썼으면 -2</span></span><input type="number" id="lv_adj" value="${+u.leaveAdjust||0}"></label>
     <div class="callout" style="margin-top:8px;font-size:12.5px">
-      현재 계산 · 적립 <b>${s.accrued}</b> ${s.adjust?`(조정 ${s.adjust>0?"+":""}${s.adjust})`:""} · 사용 <b>${s.used}</b> · 예정 ${s.upcoming} → <b>잔여 ${s.remain}일</b>
+      현재 계산 · 적립 <b>${s.accrued}</b> ${s.adjust?`(조정 ${s.adjust>0?"+":""}${s.adjust})`:""} · 사용 <b>${fmtDays(s.used)}</b> · 예정 ${fmtDays(s.upcoming)} → <b>잔여 ${fmtDays(s.remain)}일</b>
       <div class="hint" style="margin-top:6px">입사일/조정값을 바꾸면 잔여가 다시 계산됩니다.</div>
     </div>`,
     submit:async()=>{
@@ -2691,39 +2693,64 @@ function openVacationModal(){
     ? `<label class="fld"><span class="lab">대상</span><select id="v_user">${people.map(u=>`<option value="${u.id}"${u.id===me().id?" selected":""}>${esc(u.name)}</option>`).join("")}</select></label>`
     : `<input type="hidden" id="v_user" value="${me().id}">`;
   const myU=me(); const myS=myU.hireDate?leaveSummary(myU,new Date()):null;
-  const availNote = (!isMgr && myS)?`<div class="callout" style="margin-bottom:12px;font-size:12.5px">내 가용 연차 <b style="color:${(myS.remain-myS.upcoming)>0?'var(--ok)':'var(--warn)'}">${Math.max(0,myS.remain-myS.upcoming)}일</b> <span class="hint">(잔여 ${myS.remain} · 예정 ${myS.upcoming})</span>${(myS.remain-myS.upcoming)<=0?' · 더 이상 휴가를 생성할 수 없습니다':''}</div>`:"";
+  const availNote = (!isMgr && myS)?`<div class="callout" style="margin-bottom:12px;font-size:12.5px">내 가용 연차 <b style="color:${(myS.remain-myS.upcoming)>0?'var(--ok)':'var(--warn)'}">${fmtDays(Math.max(0,myS.remain-myS.upcoming))}일</b> <span class="hint">(잔여 ${fmtDays(myS.remain)} · 예정 ${fmtDays(myS.upcoming)})</span>${(myS.remain-myS.upcoming)<=0?' · 더 이상 휴가를 생성할 수 없습니다':''}</div>`:"";
   Modal.open({title:"휴가 생성",okLabel:"등록",body:`
     ${isMgr?"":`<div class="info" style="margin-bottom:12px">${esc(me().name)} 님의 휴가로 등록됩니다.</div>`}
     ${availNote}
     ${who}
+    <label class="fld"><span class="lab">휴가 종류</span>
+      <select id="v_half">
+        <option value="">종일 (1일 · 기간 선택 가능)</option>
+        <option value="am">오전 반차 (0.5일 · 하루)</option>
+        <option value="pm">오후 반차 (0.5일 · 하루)</option>
+      </select>
+    </label>
     <div class="grid g2" style="gap:0 16px">
       <label class="fld"><span class="lab">시작일</span><input type="date" id="v_start" value="${today}"></label>
-      <label class="fld"><span class="lab">종료일</span><input type="date" id="v_end" value="${today}"></label>
+      <label class="fld" id="v_endwrap"><span class="lab">종료일</span><input type="date" id="v_end" value="${today}"></label>
     </div>
-    <label class="fld"><span class="lab">메모 <span class="hint">선택 (예: 연차, 오전 반차)</span></span><input type="text" id="v_memo" placeholder="예) 연차"></label>`,
+    <label class="fld"><span class="lab">메모 <span class="hint">선택 (예: 연차, 병원 방문)</span></span><input type="text" id="v_memo" placeholder="예) 연차"></label>`,
     submit:async()=>{
-      const userId=val("v_user")||me().id, s=val("v_start"), e=val("v_end");
-      if(!s||!e){ toast("시작일과 종료일을 선택하세요"); return false; }
+      const userId=val("v_user")||me().id, half=val("v_half")||"";
+      let s=val("v_start"), e=val("v_end");
+      if(half){ e=s; }  // 반차는 하루짜리 → 종료일을 시작일로 고정
+      if(!s||!e){ toast("날짜를 선택하세요"); return false; }
       if(e<s){ toast("종료일은 시작일 이후여야 합니다"); return false; }
-      // 잔여 연차 검증: 잔여 − 이미 예정 − 이번 신청(평일) < 0 이면 차단 (예정까지 합산, 팀장 포함)
+      // 반차인데 주말이면 차단
+      if(half && weekdaysBetween(s,e)<=0){ toast("주말에는 반차를 신청할 수 없습니다"); return false; }
+      // 이번 신청의 실제 차감일수(반차면 0.5)
+      const reqDays = half ? 0.5 : weekdaysBetween(s,e);
+      // 잔여 연차 검증: 가용(잔여 − 예정) − 이번 신청 < 0 이면 차단
       const tgt=Store.user(userId);
       if(tgt && tgt.hireDate){
         const sum=leaveSummary(tgt,new Date());
-        const reqDays=weekdaysBetween(s,e);   // 이번 신청 평일 수
         const available=sum.remain - sum.upcoming;   // 예정분까지 뺀 실제 가용
         if(reqDays<=0){ toast("주말만 선택되어 사용할 평일이 없습니다"); return false; }
         if(available - reqDays < 0){
-          toast(`잔여 연차 부족 — 가용 ${Math.max(0,available)}일(잔여 ${sum.remain} · 예정 ${sum.upcoming}), 신청 ${reqDays}일(평일)`);
+          toast(`잔여 연차 부족 — 가용 ${Math.max(0,available)}일(잔여 ${sum.remain} · 예정 ${sum.upcoming}), 신청 ${reqDays}일`);
           return false;
         }
       } else if(tgt && !tgt.hireDate){
         toast("입사일이 설정되지 않아 연차를 계산할 수 없습니다. 팀장에게 문의하세요");
         return false;
       }
-      const v={id:Store.uid(),userId,start:s,end:e,memo:val("v_memo").trim(),createdBy:me().id,createdAt:Date.now()};
+      const v={id:Store.uid(),userId,start:s,end:e,memo:val("v_memo").trim(),halfDay:half,createdBy:me().id,createdAt:Date.now()};
       if(!(await Store.addVacation(v))) return false;
       toast("휴가가 등록되었습니다"); render();
     }});
+  // 반차 선택 시 종료일 입력 비활성화 (하루 고정)
+  setTimeout(()=>{
+    const half=document.getElementById("v_half");
+    const sd=document.getElementById("v_start");
+    const ed=document.getElementById("v_end");
+    const sync=()=>{ if(!half||!ed||!sd) return;
+      if(half.value){ ed.value=sd.value; ed.disabled=true; ed.style.opacity=".5"; }
+      else { ed.disabled=false; ed.style.opacity="1"; }
+    };
+    if(half){ half.addEventListener("change",sync); }
+    if(sd){ sd.addEventListener("change",()=>{ if(half&&half.value&&ed) ed.value=sd.value; }); }
+    sync();
+  },0);
 }
 function wireGantt(){ const sel=document.getElementById("g_group"); if(sel) sel.addEventListener("change",()=>{ session.gantt.group=sel.value; render(); });
   const ms=document.getElementById("mg_group"); if(ms) ms.addEventListener("change",()=>{ session.mgantt.group=ms.value; render(); }); }
@@ -2861,14 +2888,20 @@ function weekdaysBetween(startStr,endStr){
   while(cur<=e){ const wd=cur.getDay(); if(wd!==0&&wd!==6) cnt++; cur.setDate(cur.getDate()+1); }
   return cnt;
 }
-// 사용(완료=종료일이 지난 휴가)의 평일 합 / 예정(오늘 이후 종료)의 평일 합
+// 반차를 반영한 실제 차감 일수. 반차(am/pm)면 0.5일, 아니면 평일 수 그대로.
+function vacationDays(v){
+  const wd=weekdaysBetween(v.start,v.end);
+  if((v.halfDay==="am"||v.halfDay==="pm") && wd>0) return 0.5;
+  return wd;
+}
+// 사용(완료=종료일이 지난 휴가)의 일수 합 / 예정(오늘 이후 종료)의 일수 합 (반차 반영)
 function leaveUsage(userId, asOf){
   const today=LV_sod(asOf||new Date());
   let used=0, upcoming=0;
   (Store.db.vacations||[]).filter(v=>v.userId===userId).forEach(v=>{
-    const wd=weekdaysBetween(v.start,v.end);
+    const days=vacationDays(v);
     const end=LV_dparse(v.end);
-    if(end && LV_sod(end)<today) used+=wd; else upcoming+=wd;
+    if(end && LV_sod(end)<today) used+=days; else upcoming+=days;
   });
   return {used, upcoming};
 }
@@ -2880,6 +2913,8 @@ function leaveSummary(user, asOf){
   const remain=accrued+adjust-used;
   return {accrued, adjust, used, upcoming, remain};
 }
+// 0.5 단위 일수를 깔끔하게 표시 (3 → "3", 3.5 → "3.5", 부동소수점 오차 방지)
+function fmtDays(n){ return String(Math.round((+n||0)*2)/2); }
 const EXP_STATUS={pending:{l:"집행 대기",c:"--brass"},paid:{l:"집행 완료",c:"--ok"}};
 function expTotal(items){ return (items||[]).reduce((s,it)=>s+(+it.amount||0),0); }
 function won(n){ return (n||0).toLocaleString()+"원"; }
