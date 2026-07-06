@@ -1526,8 +1526,8 @@ function viewTask(id){
         <div class="card-b">${actionPanel(t,role,lastReject)}</div></div>
 
       <!-- 검토 이력 -->
-      ${reviews.length?`<div class="card" style="margin-bottom:18px"><div class="card-h"><h3>검토 이력</h3></div>
-        <div class="card-b">${reviews.map(r=>reviewRow(r)).join("")}</div></div>`:""}
+      ${(()=>{ const canSeeCo = role==="manager"||role==="executive"; const visRev = canSeeCo ? reviews : reviews.filter(r=>r.role!=="co_reviewer"); return visRev.length?`<div class="card" style="margin-bottom:18px"><div class="card-h"><h3>검토 이력</h3></div>
+        <div class="card-b">${visRev.map(r=>reviewRow(r)).join("")}</div></div>`:""; })()}
 
       <!-- 활동 타임라인 -->
       <div class="card"><div class="card-h"><h3>활동 타임라인</h3></div>
@@ -1679,12 +1679,17 @@ function viewLibrary(){
   const scope = role==="member"
     ? allTasks.filter(t=>t.ownerId===uid || Store.membersOf(t.id).some(m=>m.userId===uid) || Store.isReviewer(t.id,uid))
     : allTasks;
+  const canSeeCoReview = role==="manager"||role==="executive";  // 공동검수자 의견은 팀장·대표만 열람
   const rows=scope.map(t=>{
-    const revs=Store.reviewsOf(t.id).filter(r=>(r.role==="manager"||r.role==="co_reviewer")&&(r.comment||r.cat||r.detail));
+    const revs=Store.reviewsOf(t.id).filter(r=>{
+      if(r.role==="manager") return (r.comment||r.cat||r.detail);
+      if(r.role==="co_reviewer") return canSeeCoReview && (r.comment||r.cat||r.detail);
+      return false;
+    });
     if(!revs.length) return null;
     return {task:t, brand:Store.brand(t.brandId), revs};
   }).filter(Boolean).sort((a,b)=>b.revs[0].createdAt-a.revs[0].createdAt);
-  const sub = role==="member" ? "내가 맡은 업무(소유·공동담당·공동검수)에 대한 팀장·공동검수자 의견입니다." : "업무별 팀장·공동검수자 검토 의견 모음입니다.";
+  const sub = role==="member" ? "내가 맡은 업무에 대한 팀장 검토 의견입니다." : "업무별 팀장·공동검수자 검토 의견 모음입니다.";
   const revLine=r=>{
     const co=r.role==="co_reviewer";
     const border= co?"var(--primary)":(r.decision==="approved"?"var(--ok,#2e7d32)":"var(--warn)");
@@ -1704,7 +1709,7 @@ function viewLibrary(){
       </div>
       <div class="hint" style="margin-top:8px"><span style="cursor:pointer;color:var(--primary)" data-act="open-task" data-id="${task.id}">→ 업무 상세 보기</span></div>
     </div>`).join("")}</div>`
-    : C.empty("💬", role==="member"?"받은 검토 피드백이 없습니다":"검토 의견이 없습니다", "팀장 승인·반려 의견과 공동검수자 의견이 여기에 모입니다.");
+    : C.empty("💬", role==="member"?"받은 검토 피드백이 없습니다":"검토 의견이 없습니다", role==="member"?"팀장 승인·반려 의견이 여기에 모입니다.":"팀장 승인·반려 의견과 공동검수자 의견이 여기에 모입니다.");
   return `
   ${ph("피드백 라이브러리", sub)}
   <div class="card"><div class="card-b">${body}</div></div>`;
