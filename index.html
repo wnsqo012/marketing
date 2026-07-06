@@ -62,6 +62,22 @@
   .ai-flag.live{background:var(--brass);border-color:var(--brass);color:#fff}
   .hbtn{appearance:none;border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe0de;font-size:11.5px;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:var(--fm)}
   .cmet-kpis{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .cal-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .cal-nav{display:flex;align-items:center;gap:4px}
+  .cal-legend{display:flex;gap:14px;font-size:11.5px;color:var(--ink-soft)}
+  .cal-legend span{display:inline-flex;align-items:center;gap:5px}
+  .cal-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .cal-grid{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .cal-head{display:flex;background:var(--surface-2);border-bottom:1px solid var(--line)}
+  .cal-head>div{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:7px 0}
+  .cal-week{position:relative;border-bottom:1px solid var(--line);min-height:66px}
+  .cal-week:last-child{border-bottom:0}
+  .cal-cell{position:absolute;top:0;bottom:0;border-right:1px solid var(--line);box-sizing:border-box;padding:3px}
+  .cal-cell:last-child{border-right:0}
+  .cal-cell.out{background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(0,0,0,.015) 6px,rgba(0,0,0,.015) 12px)}
+  .cal-num{font-size:11.5px;font-weight:600;line-height:18px;min-width:18px;height:18px;display:inline-block;text-align:center;border-radius:50%}
+  .cal-bar{position:absolute;height:17px;line-height:17px;border-radius:4px;color:#fff;font-size:10.5px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .cal-bar[data-act]{cursor:pointer}
   .xls-wrap{overflow-x:auto;padding:2px}
   .xls-appr{display:flex;justify-content:flex-end;gap:0;margin-bottom:6px}
   .xls-appr .abox{border:1px solid #7a7a7a;border-left:0;min-width:66px;text-align:center;font-size:10.5px;font-family:'Malgun Gothic',sans-serif}
@@ -1281,7 +1297,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -1690,6 +1706,8 @@ const Actions={
   "vac-add"(){ openVacationModal(); },
   "leave-edit"(el){ openLeaveModal(el.dataset.id); },
   async "vac-del"(el){ if(confirm("이 휴가를 삭제할까요?")){ if(await Store.delVacation(el.dataset.id)){ toast("휴가가 삭제되었습니다"); render(); } } },
+  "cal-nav"(el){ const now=new Date(); let cm=session.calMonth||`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`; let [y,m]=cm.split("-").map(Number); m+=(+el.dataset.dir); if(m<1){m=12;y--;} if(m>12){m=1;y++;} session.calMonth=`${y}-${String(m).padStart(2,"0")}`; render(); },
+  "cal-today"(){ const n=new Date(); session.calMonth=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; render(); },
   "g-range"(el){ const g=el.dataset.gt==="m"?session.mgantt:session.gantt; g.range=el.dataset.range; g.anchor=null; render(); },
   "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
   "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:"",hideExecuted:false}; render(); },
@@ -2512,28 +2530,15 @@ function ganttShift(dir,g){
 }
 function viewGantt(){
   const day=86400000;
-  const all=Store.db.tasks.filter(t=>t.due && STATUS[t.status].idx>=STATUS.exec_review.idx).slice();
-  const isMgr=me().role==="manager", g=session.gantt;
-  const toolbar=()=>`<div class="g-toolbar">
-    <div class="g-seg">${[["week","주"],["month","월"],["quarter","분기"],["all","전체"]].map(([k,l])=>`<button data-act="g-range" data-range="${k}" class="${g.range===k?"on":""}">${l}</button>`).join("")}</div>
-    ${g.range!=="all"?`<span class="g-nav"><button data-act="g-nav" data-dir="-1">‹</button><b>${ganttLabel(ganttWindow())}</b><button data-act="g-nav" data-dir="1">›</button></span>`:`<span class="g-nav"><b>전체 기간</b></span>`}
-    <select class="g-sel" id="g_group"><option value="brand" ${g.group==="brand"?"selected":""}>그룹: 브랜드별</option><option value="owner" ${g.group==="owner"?"selected":""}>그룹: 담당자별</option><option value="none" ${g.group==="none"?"selected":""}>그룹: 없음</option></select>
-    <span style="flex:1"></span>${VAC_OK?`<button class="btn btn-ghost btn-sm" data-act="vac-add" style="margin-right:8px">🏖 + 휴가 생성</button>`:""}<span class="tag">확정 업무 ${all.length}건</span>
-  </div>`;
-  // 마감 임박 스트립(D-7 이내 + 마감 초과, 집행완료 전)
-  const today=(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})();
-  const soon=all.filter(t=>STATUS[t.status].idx<STATUS.executed.idx).map(t=>({t,diff:Math.round((new Date(t.due).setHours(0,0,0,0)-today)/day)})).filter(x=>x.diff<=7).sort((a,b)=>a.diff-b.diff).slice(0,8);
-  const dueColor=d=>d<0?"var(--warn)":d===0?"var(--brass)":"var(--s-prod)";
-  const dueText=d=>d<0?`마감 +${-d}일`:d===0?"D-Day":`D-${d}`;
-  const strip=soon.length?`<div class="card" style="margin-bottom:16px"><div class="card-b"><div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:8px">⏰ 마감 임박 (D-7 이내)</div><div class="g-due-strip">${soon.map(({t,diff})=>`<div class="g-due" data-act="open-task" data-id="${t.id}"><span class="dd" style="color:${dueColor(diff)}">${dueText(diff)}</span><span class="tt">${esc(t.title)}</span><span class="mm">${esc(Store.brand(t.brandId)?.name||"-")} · ${esc(Store.user(t.ownerId)?.name||"")}</span></div>`).join("")}</div></div></div>`:"";
-
-  // 휴가 데이터 + 상단 스트립(진행중·예정)
+  const sod=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();};
+  const today=sod(Date.now());
+  const isMgr=me().role==="manager";
+  // 확정 업무(팀장 검토 완료 이상) + 휴가
+  const all=Store.db.tasks.filter(t=>t.due && STATUS[t.status].idx>=STATUS.exec_review.idx);
   const vmts=d=>{const p=(d||"").split("-").map(Number);return p.length===3?new Date(p[0],p[1]-1,p[2]).getTime():Date.parse(d);};
   const vacs=VAC_OK?Store.vacationsAll().slice():[];
-  const upcoming=vacs.filter(v=>vmts(v.end)>=today).sort((a,b)=>vmts(a.start)-vmts(b.start));
-  const vacStrip=(VAC_OK&&upcoming.length)?`<div class="card" style="margin-bottom:16px"><div class="card-b"><div style="font-size:12px;font-weight:700;color:var(--vac);margin-bottom:8px">🏖 휴가 (진행중·예정)</div><div class="g-due-strip">${upcoming.slice(0,12).map(v=>{const u=Store.user(v.userId);const canDel=me().role==="manager"||v.userId===me().id||v.createdBy===me().id;const ongoing=vmts(v.start)<=today&&today<=vmts(v.end);return `<div class="g-due" style="border-color:var(--vac);${ongoing?'background:var(--vac-bg)':''}"><span class="dd" style="color:var(--vac)">${ongoing?"휴가중":"예정"}</span><span class="tt">${esc(u?.name||"-")}</span><span class="mm">${mdisp(v.start)} ~ ${mdisp(v.end)}${canDel?` · <span style="cursor:pointer;color:var(--warn)" data-act="vac-del" data-id="${v.id}">삭제</span>`:""}</span></div>`;}).join("")}</div></div></div>`:"";
 
-  // 잔여 연차 카드 (팀장: 전원 / 팀원: 본인)
+  // ---- 잔여 연차 카드 (팀장: 전원 / 팀원: 본인) ----
   const lvUsers=(me().role==="manager"||me().role==="executive")
     ? Store.db.users.filter(u=>["member","manager","executive"].includes(u.role)&&u.hireDate)
     : Store.db.users.filter(u=>u.id===me().id&&u.hireDate);
@@ -2552,63 +2557,83 @@ function viewGantt(){
     </tbody></table>
     <div class="hint" style="margin-top:8px">잔여 = 적립 + 조정 − 사용(완료 휴가의 평일 수). ‘예정’은 아직 차감되지 않은 앞으로의 휴가입니다.</div></div></div>`:"";
 
-  const hasContent = all.length || (VAC_OK && vacs.length) || lvUsers.length;
-  if(!hasContent) return `${ph("일정 (간트)","팀장 검토 완료된 확정 업무와 팀 휴가를 함께 봅니다.")}${toolbar()}<div class="card"><div class="card-b">${C.empty("📊","표시할 일정이 없습니다","팀장 검토 승인 업무 또는 ‘+ 휴가 생성’으로 등록한 휴가가 여기에 표시됩니다.")}</div></div>`;
-  if(!all.length && !(VAC_OK&&vacs.length) && lvUsers.length) return `${ph("일정 (간트)","팀 휴가와 잔여 연차를 함께 봅니다.")}${toolbar()}${leaveCard}`;
+  // ---- 월 달력 ----
+  const now=new Date();
+  let cm=session.calMonth || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const [cy,cmo]=cm.split("-").map(Number);
+  const monthStart=new Date(cy,cmo-1,1);
+  const daysInMonth=new Date(cy,cmo,0).getDate();
+  const firstWd=monthStart.getDay();               // 0=일
+  const gridStart=sod(new Date(cy,cmo-1,1-firstWd));
+  const weeks=Math.ceil((firstWd+daysInMonth)/7);
+  const WD=["일","월","화","수","목","금","토"];
 
-  // 윈도우 계산
-  let win=ganttWindow();
-  if(!win){ const sod=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();};
-    const starts=all.map(t=>t.start||t.createdAt).concat(vacs.map(v=>vmts(v.start)));
-    const ends=all.map(t=>t.due).concat(vacs.map(v=>vmts(v.end)));
-    const mn=sod(Math.min(...starts,today)); const mx=sod(Math.max(...ends,today))+day; win={start:mn,end:mx,range:"all",ticks:"month"}; }
-  const span=Math.max(day,win.end-win.start);
-  const inWin=all.filter(t=>{ const s=t.start||t.createdAt, e=Math.max(t.due,s+day*0.4); return e>=win.start && s<win.end; });
-  const todayPct=(today>=win.start&&today<win.end)?((today-win.start)/span)*100:null;
-  const ticks=ganttTicks(win);
-  const tickEls=ticks.map(tk=>`<div class="tick" style="left:${tk.pct}%"></div>`).join("");
+  // 이벤트 목록(업무+휴가)
+  const events=[];
+  all.forEach(t=>{ const s=sod(t.start||t.createdAt), e=sod(t.due);
+    events.push({kind:"task",id:t.id,s,e:Math.max(e,s),label:t.title,color:STATUS_STYLE[t.status]||"--s-prod",sub:(Store.user(t.ownerId)?.name||"")}); });
+  vacs.forEach(v=>{ const s=sod(vmts(v.start)),e=sod(vmts(v.end));
+    events.push({kind:"vac",id:v.id,s,e:Math.max(e,s),label:(Store.user(v.userId)?.name||"휴가"),color:"--vac",sub:"휴가"}); });
 
-  // 그룹화
-  const keyOf=t=> g.group==="owner" ? (Store.user(t.ownerId)?.name||"미지정") : g.group==="brand" ? (Store.brand(t.brandId)?.name||"미지정") : "";
-  const groups={}; inWin.sort((a,b)=>((a.start||a.createdAt)-(b.start||b.createdAt))).forEach(t=>{ (groups[keyOf(t)]=groups[keyOf(t)]||[]).push(t); });
-  const rowHtml=t=>{
-    const s=t.start||t.createdAt, e=Math.max(t.due,s+day*0.4);
-    const left=Math.max(0,((s-win.start)/span)*100), right=Math.min(100,((e-win.start)/span)*100);
-    const width=Math.max(2,right-left);
-    const col=STATUS_STYLE[t.status]||"--s-prod", di=ddayInfo(t), past=new Date(t.due).setHours(0,0,0,0)<today;
-    return `<div class="g-row">
-      <div class="lbl" data-act="open-task" data-id="${t.id}"><div class="t">${esc(t.title)}</div><div class="s">${esc(Store.brand(t.brandId)?.name||'-')} · ${Store.user(t.ownerId)?.name||''}</div></div>
-      <div class="g-track">${tickEls}${todayPct!=null?`<div class="g-today" style="left:${todayPct}%"></div>`:""}
-        <div class="g-bar${past?' past':''}" data-act="open-task" data-id="${t.id}" title="${esc(t.title)} (${fmtFullDay(s)} ~ ${fmtFullDay(t.due)})" style="left:${left}%;width:${width}%;background:var(${col})">${STATUS[t.status].label}${di?` · ${di.text}`:""}</div>
-      </div>${isMgr?`<button class="g-del" data-act="delete-task" data-id="${t.id}" title="업무 삭제">✕</button>`:""}</div>`;
-  };
-  const body = inWin.length ? Object.keys(groups).sort().map(k=>`${g.group!=="none"?`<div class="g-grp">${esc(k)} <span style="font-weight:500;opacity:.7">${groups[k].length}</span></div>`:""}${groups[k].map(rowHtml).join("")}`).join("")
-    : `<div class="g-empty-range">이 기간에 표시할 확정 업무가 없습니다. 기간을 넓히거나 이동해 보세요.</div>`;
+  const toolbar=`<div class="cal-toolbar">
+    <span class="cal-nav"><button class="btn btn-ghost btn-sm" data-act="cal-nav" data-dir="-1">‹</button>
+      <b style="min-width:120px;text-align:center;display:inline-block">${cy}년 ${cmo}월</b>
+      <button class="btn btn-ghost btn-sm" data-act="cal-nav" data-dir="1">›</button>
+      <button class="btn btn-ghost btn-sm" data-act="cal-today" style="margin-left:6px">오늘</button></span>
+    <span class="cal-legend"><span><i style="background:var(--s-appr)"></i>업무</span><span><i style="background:var(--vac)"></i>휴가</span></span>
+    <span style="flex:1"></span>${VAC_OK?`<button class="btn btn-ghost btn-sm" data-act="vac-add">🏖 + 휴가 생성</button>`:""}
+  </div>`;
 
-  // 휴가 막대(윈도우와 겹치는 것) — 차트 맨 위 '휴가' 그룹
-  const vacIn=vacs.filter(v=>{const s=vmts(v.start),e=vmts(v.end)+day; return e>=win.start && s<win.end;}).sort((a,b)=>vmts(a.start)-vmts(b.start));
-  const vacRow=v=>{ const u=Store.user(v.userId); const s=vmts(v.start), e=vmts(v.end)+day;
-    const left=Math.max(0,((s-win.start)/span)*100), right=Math.min(100,((e-win.start)/span)*100), width=Math.max(2,right-left);
-    const canDel=me().role==="manager"||v.userId===me().id||v.createdBy===me().id;
-    return `<div class="g-row">
-      <div class="lbl"><div class="t">${esc(u?.name||"-")}</div><div class="s">휴가${v.memo?` · ${esc(v.memo)}`:""}</div></div>
-      <div class="g-track">${tickEls}${todayPct!=null?`<div class="g-today" style="left:${todayPct}%"></div>`:""}
-        <div class="g-bar" title="${esc(u?.name||"")} 휴가 (${mdisp(v.start)} ~ ${mdisp(v.end)})" style="left:${left}%;width:${width}%;background:var(--vac)">🏖 ${mdisp(v.start).slice(5)}~${mdisp(v.end).slice(5)}</div>
-      </div>${canDel?`<button class="g-del" data-act="vac-del" data-id="${v.id}" title="휴가 삭제">✕</button>`:`<span style="width:22px"></span>`}</div>`;
-  };
-  const vacBody=(VAC_OK&&vacIn.length)?`<div class="g-grp" style="color:var(--vac)">🏖 휴가 <span style="font-weight:500;opacity:.7">${vacIn.length}</span></div>${vacIn.map(vacRow).join("")}`:"";
+  let weeksHtml="";
+  for(let w=0; w<weeks; w++){
+    const weekStart=gridStart + w*7*day;
+    const weekEnd=weekStart + 7*day;
+    // 이번 주 이벤트 → 세그먼트(col start/end) + 레인 배치
+    const segs=events.filter(ev=>ev.e>=weekStart && ev.s<weekEnd).map(ev=>{
+      const cs=Math.max(0, Math.floor((ev.s-weekStart)/day));
+      const ce=Math.min(6, Math.floor((ev.e-weekStart)/day));
+      return {...ev,cs,ce};
+    }).sort((a,b)=>a.cs-b.cs || (b.ce-b.cs)-(a.ce-a.cs));
+    const lanes=[]; // 각 레인의 마지막 점유 col
+    segs.forEach(sg=>{ let placed=-1;
+      for(let i=0;i<lanes.length;i++){ if(lanes[i]<sg.cs){ placed=i; break; } }
+      if(placed<0){ placed=lanes.length; lanes.push(sg.ce); } else lanes[placed]=sg.ce;
+      sg.lane=placed;
+    });
+    const laneCount=Math.max(1,lanes.length);
+    const rowH=24 + laneCount*20 + 6;
+    // 날짜 셀 배경
+    let cells="";
+    for(let d=0; d<7; d++){
+      const ts=weekStart + d*day; const dt=new Date(ts);
+      const inMonth=dt.getMonth()===cmo-1;
+      const isToday=ts===today; const wd=dt.getDay();
+      const numColor= isToday?"#fff": !inMonth?"var(--muted)": wd===0?"var(--warn)": wd===6?"var(--s-prod)":"var(--ink)";
+      cells+=`<div class="cal-cell${inMonth?"":" out"}" style="left:${d/7*100}%;width:${100/7}%">
+        <span class="cal-num" style="color:${numColor};${isToday?"background:var(--primary);":""}">${dt.getDate()}</span>
+      </div>`;
+    }
+    // 이벤트 막대
+    let bars="";
+    segs.forEach(sg=>{
+      const left=sg.cs/7*100, width=(sg.ce-sg.cs+1)/7*100;
+      const top=24 + sg.lane*20;
+      const clickable=sg.kind==="task"?`data-act="open-task" data-id="${sg.id}"`:"";
+      const contBadge = sg.s<weekStart?"‹ ":""; const contAfter = sg.e>=weekEnd?" ›":"";
+      bars+=`<div class="cal-bar" ${clickable} title="${esc(sg.label)}${sg.sub?" · "+esc(sg.sub):""}" style="left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${top}px;background:var(${sg.color})">${contBadge}${sg.kind==="vac"?"🏖 ":""}${esc(sg.label)}${contAfter}</div>`;
+    });
+    weeksHtml+=`<div class="cal-week" style="height:${rowH}px">${cells}${bars}</div>`;
+  }
+  const calendar=`<div class="card"><div class="card-b">
+    ${toolbar}
+    <div class="cal-grid">
+      <div class="cal-head">${WD.map((d,i)=>`<div style="color:${i===0?'var(--warn)':i===6?'var(--s-prod)':'var(--ink-soft)'}">${d}</div>`).join("")}</div>
+      ${weeksHtml}
+    </div>
+    <div class="hint" style="margin-top:10px">확정 업무(팀장 검토 완료 이상)와 팀 휴가를 표시합니다. 업무 막대를 누르면 상세로 이동합니다.</div>
+  </div></div>`;
 
-  return `
-  ${ph("일정 (간트)","팀장 검토 완료된 확정 업무를 전 팀이 함께 봅니다. 막대를 누르면 상세로 이동합니다."+(isMgr?" 팀장은 ✕로 삭제할 수 있습니다.":""))}
-  ${toolbar()}
-  ${strip}
-  ${leaveCard}
-  ${vacStrip}
-  <div class="card"><div class="card-b"><div class="gantt-wrap"><div class="gantt">
-    <div class="g-head"><div class="lbl">업무</div><div class="scale" style="position:relative;flex:1;height:14px">${ticks.map(tk=>`<span style="position:absolute;left:${tk.pct}%;transform:translateX(2px)">${tk.label}</span>`).join("")}</div></div>
-    ${vacBody}
-    ${body}
-  </div></div></div></div>`;
+  return `${ph("일정","팀 업무 일정과 휴가를 월 달력으로 봅니다.")}${leaveCard}${calendar}`;
 }
 function openLeaveModal(uid){
   if(me().role!=="manager"&&me().role!=="executive"){ toast("팀장만 설정할 수 있습니다"); return; }
