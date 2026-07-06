@@ -383,8 +383,10 @@
   .ntoast .nt-t{font-weight:600;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:7px}
   .ntoast .nt-t .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);flex-shrink:0}
   .ntoast .nt-b{font-size:12px;color:var(--ink-soft);margin-top:4px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .ntoast .nt-x{position:absolute;top:8px;right:9px;font-size:14px;color:var(--faint);line-height:1;padding:2px 4px;border-radius:6px}
+  .ntoast .nt-x{position:absolute;top:8px;right:9px;font-size:14px;color:var(--faint);line-height:1;padding:2px 6px;border-radius:6px;cursor:pointer}
   .ntoast .nt-x:hover{background:var(--surface-2);color:var(--ink-soft)}
+  #ntoasts .nt-clear{align-self:flex-end;pointer-events:auto;cursor:pointer;background:var(--ink);color:#fff;border:0;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;box-shadow:var(--shadow-lg);opacity:.92}
+  #ntoasts .nt-clear:hover{opacity:1}
   @media(max-width:640px){ #ntoasts{top:10px;right:8px;left:8px;max-width:none} }
   /* ===== 반응형 (태블릿/모바일) ===== */
   @media(max-width:980px){
@@ -3764,22 +3766,37 @@ function updateTaskListOnly(){ // 검색 시 전체 리렌더 대신 목록만 (
 ===================================================================== */
 let toastTimer; function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2400);}
 // 알림 전용 토스트 — 여러 개가 상단 우측에 쌓임. 클릭 시 해당 업무로 이동.
+// 자동으로 사라지지 않고, 수신자가 ✕ 또는 카드를 눌러야 사라진다.
 function notifToast(title, body, taskId){
   const host=document.getElementById("ntoasts"); if(!host) return;
-  // 화면에 이미 8개 넘게 쌓이면 가장 오래된 것부터 제거
-  while(host.children.length>=8){ host.removeChild(host.firstChild); }
+  // 화면에 너무 많이 쌓이면(12개 초과) 가장 오래된 것부터 제거
+  while(host.querySelectorAll(".ntoast").length>=12){ const first=host.querySelector(".ntoast"); if(first) first.remove(); else break; }
   const el=document.createElement("div");
   el.className="ntoast";
-  el.innerHTML=`<span class="nt-x">✕</span>
+  el.innerHTML=`<span class="nt-x" aria-label="알림 닫기">✕</span>
     <div class="nt-t"><span class="dot"></span>${esc(title||"새 알림")}</div>
     ${body?`<div class="nt-b">${esc(body)}</div>`:""}`;
-  const remove=()=>{ el.classList.add("hide"); el.classList.remove("show"); setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); },260); };
-  // 카드 클릭 → 업무로 이동
+  const remove=()=>{ el.classList.add("hide"); el.classList.remove("show"); setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); updateNtClear(); },260); };
+  // 카드 클릭 → 업무로 이동 후 닫힘 / ✕ 클릭 → 닫기만
   el.onclick=(e)=>{ if(e.target.classList.contains("nt-x")){ e.stopPropagation(); remove(); return; }
     if(taskId){ session.route={view:"task",id:taskId}; render(); } remove(); };
   host.appendChild(el);
   requestAnimationFrame(()=>el.classList.add("show"));
-  setTimeout(remove, 8000);  // 8초 후 자동 사라짐
+  updateNtClear();
+  // 자동 사라짐 없음 — 수신자가 직접 닫아야 함
+}
+// 알림이 2개 이상 쌓이면 '모두 닫기' 버튼을 상단에 표시
+function updateNtClear(){
+  const host=document.getElementById("ntoasts"); if(!host) return;
+  const cards=[...host.querySelectorAll(".ntoast")];
+  let btn=host.querySelector(".nt-clear");
+  if(cards.length>=2){
+    if(!btn){ btn=document.createElement("button"); btn.className="nt-clear"; btn.textContent="모두 닫기";
+      btn.onclick=()=>{ host.querySelectorAll(".ntoast").forEach(c=>{ c.classList.add("hide"); c.classList.remove("show"); });
+        setTimeout(()=>{ host.querySelectorAll(".ntoast").forEach(c=>c.remove()); updateNtClear(); },260); };
+      host.insertBefore(btn, host.firstChild);
+    } else if(host.firstChild!==btn){ host.insertBefore(btn, host.firstChild); }
+  } else if(btn){ btn.remove(); }
 }
 async function login(){
   const email=document.getElementById("loginId").value.trim(), pw=document.getElementById("loginPw").value;
