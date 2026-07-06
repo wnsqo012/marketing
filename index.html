@@ -198,8 +198,10 @@
   .tlist{display:flex;flex-direction:column;gap:10px}
   .tgroup{margin-bottom:18px}
   .tgroup:last-child{margin-bottom:0}
-  .tgroup-h{display:flex;align-items:center;gap:9px;margin:0 2px 9px;padding-bottom:7px;border-bottom:1px solid var(--line)}
-  .tgroup-h .bn{font-family:var(--fd);font-weight:600;font-size:15px;color:var(--ink)}
+  .tgroup-h{display:flex;align-items:center;gap:9px;margin:0 2px 9px;padding-bottom:7px;border-bottom:1px solid var(--line);user-select:none}
+  .tgroup-h:hover .bn{color:var(--primary)}
+  .tgroup-h .tw{font-size:11px;color:var(--muted);width:12px;display:inline-block;text-align:center}
+  .tgroup-h .bn{font-family:var(--fd);font-weight:600;font-size:15px;color:var(--ink);transition:color .12s}
   .tgroup-h .cnt{font-family:var(--fm);font-size:11px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:1px 9px}
   .titem{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surface);border:1px solid var(--line);border-radius:11px;cursor:pointer;transition:.12s}
   .titem:hover{border-color:var(--line-strong);box-shadow:var(--shadow)}
@@ -1324,7 +1326,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},collapsedBrands:{},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -1460,7 +1462,7 @@ function taskList(list){
       ${C.badge(t.status)}</div>`;
   }).join("")}</div>`;
 }
-// 브랜드별로 묶어서 표시 (업무 메뉴 전용)
+// 브랜드별로 묶어서 표시 (업무 메뉴 전용) — 그룹 접기/펴기 지원
 function taskListByBrand(list){
   // 브랜드 id → 업무들
   const groups=new Map();
@@ -1474,9 +1476,13 @@ function taskListByBrand(list){
   return order.map(key=>{
     const items=groups.get(key);
     const bname = key==="__none__" ? "브랜드 미지정" : (Store.brand(key)?.name||"-");
-    return `<div class="tgroup">
-      <div class="tgroup-h"><span class="bn">${esc(bname)}</span><span class="cnt">${items.length}건</span></div>
-      ${taskList(items)}
+    const collapsed = !!session.collapsedBrands[key];
+    return `<div class="tgroup${collapsed?" collapsed":""}">
+      <div class="tgroup-h" data-act="toggle-brand" data-brand="${key}" style="cursor:pointer">
+        <span class="tw">${collapsed?"▸":"▾"}</span>
+        <span class="bn">${esc(bname)}</span><span class="cnt">${items.length}건</span>
+      </div>
+      <div class="tgroup-body"${collapsed?' style="display:none"':""}>${taskList(items)}</div>
     </div>`;
   }).join("");
 }
@@ -1492,6 +1498,8 @@ function viewTasks(){
     <select id="f_prio"><option value="">우선순위 전체</option>${PRIORITIES.map(p=>`<option value="${p.k}" ${session.filters.prio===p.k?"selected":""}>${p.l}</option>`).join("")}</select>
     <label class="chip" style="display:inline-flex;align-items:center"><input type="checkbox" id="f_exec" ${session.filters.hideExecuted?"checked":""} style="position:static;opacity:1;width:auto;margin-right:7px"><span style="border:0;padding:0;color:var(--ink-soft);font-weight:500">집행완료 제외</span></label>
     <button class="btn btn-ghost btn-sm" data-act="clear-filter">초기화</button>
+    <button class="btn btn-ghost btn-sm" data-act="collapse-all-brands">전체 접기</button>
+    <button class="btn btn-ghost btn-sm" data-act="expand-all-brands">전체 펴기</button>
   </div>
   <div class="card"><div class="card-b">${list.length?taskListByBrand(list):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.")}</div></div>`;
 }
@@ -1763,6 +1771,9 @@ const Actions={
   "g-range"(el){ const g=el.dataset.gt==="m"?session.mgantt:session.gantt; g.range=el.dataset.range; g.anchor=null; render(); },
   "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
   "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:"",hideExecuted:false}; render(); },
+  "toggle-brand"(el){ const key=el.dataset.brand; session.collapsedBrands[key]=!session.collapsedBrands[key]; updateTaskListOnly(); },
+  "collapse-all-brands"(){ const list=filtered(visibleTasks()); const keys=new Set(list.map(t=>t.brandId||"__none__")); keys.forEach(k=>{ session.collapsedBrands[k]=true; }); updateTaskListOnly(); },
+  "expand-all-brands"(){ session.collapsedBrands={}; updateTaskListOnly(); },
 
   "new-task"(){ openTaskModal(); },
   "dup-task"(el){ const t=Store.task(el.dataset.id); if(t) openTaskModal(t); },
@@ -3904,7 +3915,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","toggle-brand","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
