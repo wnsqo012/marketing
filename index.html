@@ -494,6 +494,27 @@ const STATUS = Object.fromEntries(STATUS_FLOW.map((s,i)=>[s.key,{...s,idx:i}]));
 // 반려(수정 요청) — 선형 파이프라인 밖의 분기 상태. 위치상 '제작중'과 동일(idx 1)로 취급.
 STATUS.revision = {key:"revision",label:"수정 요청",short:"수정",idx:1,owner:"member"};
 const STATUS_STYLE = {planning:"--s-plan",producing:"--s-prod",revision:"--warn",manager_review:"--s-mgr",exec_review:"--s-exec",approved:"--s-appr",executed:"--s-exec2",analyzed:"--s-done"};
+
+/* =====================================================================
+   담당자별 캘린더 색상 (일정 화면 업무 막대 색 + 상단 범례)
+   여기 이름·색만 바꾸면 캘린더와 범례가 함께 바뀝니다.
+   색은 #핑크 형태(HEX)로 자유롭게 지정하세요.
+   목록에 없는 담당자는 아래 ASSIGNEE_FALLBACK 색이 순서대로 자동 배정됩니다.
+   ===================================================================== */
+const ASSIGNEE_COLORS = {
+  "최효선": "#EC6E9C",  // 핑크
+  "이희수": "#4CAF71",  // 그린
+  "노효선": "#E6B325",  // 옐로우
+};
+// 목록에 없는 담당자용 기본 색상(자동 배정, 중복 방지용 여러 개)
+const ASSIGNEE_FALLBACK = ["#6C8EBF","#9673A6","#3A8A7A","#C1573F","#7C6BB0","#5B9BD5","#B07D2E"];
+// 담당자 이름 → 색 반환(등록 안 된 사람은 이름 기준으로 팔레트에서 안정적으로 배정)
+function assigneeColor(name){
+  if(!name) return "#8a98a0";
+  if(ASSIGNEE_COLORS[name]) return ASSIGNEE_COLORS[name];
+  let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
+  return ASSIGNEE_FALLBACK[h % ASSIGNEE_FALLBACK.length];
+}
 const PRIORITIES = [{k:"high",l:"높음"},{k:"mid",l:"보통"},{k:"low",l:"낮음"}];
 const PURPOSES = ["신규 유입","구매전환","재구매","브랜드인지","리쿠르팅","이벤트","파트너 모집"];
 const KPIS = [
@@ -2571,16 +2592,24 @@ function viewGantt(){
   // 이벤트 목록(업무+휴가)
   const events=[];
   all.forEach(t=>{ const s=sod(t.start||t.createdAt), e=sod(t.due);
-    events.push({kind:"task",id:t.id,s,e:Math.max(e,s),label:t.title,color:STATUS_STYLE[t.status]||"--s-prod",sub:(Store.user(t.ownerId)?.name||"")}); });
+    const ownerName=Store.user(t.ownerId)?.name||"";
+    events.push({kind:"task",id:t.id,s,e:Math.max(e,s),label:t.title,colorHex:assigneeColor(ownerName),sub:ownerName}); });
   vacs.forEach(v=>{ const s=sod(vmts(v.start)),e=sod(vmts(v.end));
     events.push({kind:"vac",id:v.id,s,e:Math.max(e,s),label:(Store.user(v.userId)?.name||"휴가"),color:"--vac",sub:"휴가"}); });
+
+  // 상단 범례: 등록된 담당자 + 이번 달 캘린더에 나타난 담당자 모두 표시
+  const legendNames = [];
+  Object.keys(ASSIGNEE_COLORS).forEach(n=>{ if(!legendNames.includes(n)) legendNames.push(n); });
+  events.forEach(ev=>{ if(ev.kind==="task" && ev.sub && !legendNames.includes(ev.sub)) legendNames.push(ev.sub); });
+  const legendHtml = legendNames.map(n=>`<span><i style="background:${assigneeColor(n)}"></i>${esc(n)}</span>`).join("")
+    + `<span><i style="background:var(--vac)"></i>휴가</span>`;
 
   const toolbar=`<div class="cal-toolbar">
     <span class="cal-nav"><button class="btn btn-ghost btn-sm" data-act="cal-nav" data-dir="-1">‹</button>
       <b style="min-width:120px;text-align:center;display:inline-block">${cy}년 ${cmo}월</b>
       <button class="btn btn-ghost btn-sm" data-act="cal-nav" data-dir="1">›</button>
       <button class="btn btn-ghost btn-sm" data-act="cal-today" style="margin-left:6px">오늘</button></span>
-    <span class="cal-legend"><span><i style="background:var(--s-appr)"></i>업무</span><span><i style="background:var(--vac)"></i>휴가</span></span>
+    <span class="cal-legend">${legendHtml}</span>
     <span style="flex:1"></span>${VAC_OK?`<button class="btn btn-ghost btn-sm" data-act="vac-add">🏖 + 휴가 생성</button>`:""}
   </div>`;
 
@@ -2620,7 +2649,8 @@ function viewGantt(){
       const top=24 + sg.lane*20;
       const clickable=sg.kind==="task"?`data-act="open-task" data-id="${sg.id}"`:"";
       const contBadge = sg.s<weekStart?"‹ ":""; const contAfter = sg.e>=weekEnd?" ›":"";
-      bars+=`<div class="cal-bar" ${clickable} title="${esc(sg.label)}${sg.sub?" · "+esc(sg.sub):""}" style="left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${top}px;background:var(${sg.color})">${contBadge}${sg.kind==="vac"?"🏖 ":""}${esc(sg.label)}${contAfter}</div>`;
+      const barBg = sg.colorHex ? sg.colorHex : `var(${sg.color})`;
+      bars+=`<div class="cal-bar" ${clickable} title="${esc(sg.label)}${sg.sub?" · "+esc(sg.sub):""}" style="left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${top}px;background:${barBg}">${contBadge}${sg.kind==="vac"?"🏖 ":""}${esc(sg.label)}${contAfter}</div>`;
     });
     weeksHtml+=`<div class="cal-week" style="height:${rowH}px">${cells}${bars}</div>`;
   }
@@ -2630,7 +2660,7 @@ function viewGantt(){
       <div class="cal-head">${WD.map((d,i)=>`<div style="color:${i===0?'var(--warn)':i===6?'var(--s-prod)':'var(--ink-soft)'}">${d}</div>`).join("")}</div>
       ${weeksHtml}
     </div>
-    <div class="hint" style="margin-top:10px">확정 업무(팀장 검토 완료 이상)와 팀 휴가를 표시합니다. 업무 막대를 누르면 상세로 이동합니다.</div>
+    <div class="hint" style="margin-top:10px">확정 업무(팀장 검토 완료 이상)와 팀 휴가를 표시합니다. 막대 색은 담당자별로 구분되며, 업무 막대를 누르면 상세로 이동합니다.</div>
   </div></div>`;
 
   return `${ph("일정","팀 업무 일정과 휴가를 월 달력으로 봅니다.")}${leaveCard}${calendar}`;
