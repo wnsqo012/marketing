@@ -202,6 +202,7 @@
   .tgroup-h:hover .bn{color:var(--primary)}
   .tgroup-h .tw{font-size:11px;color:var(--muted);width:12px;display:inline-block;text-align:center}
   .tgroup-h .bn{font-family:var(--fd);font-weight:600;font-size:15px;color:var(--ink);transition:color .12s}
+  .tgroup-h .avatar{width:22px;height:22px;font-size:10px;flex-shrink:0}
   .tgroup-h .cnt{font-family:var(--fm);font-size:11px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:1px 9px}
   .titem{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surface);border:1px solid var(--line);border-radius:11px;cursor:pointer;transition:.12s}
   .titem:hover{border-color:var(--line-strong);box-shadow:var(--shadow)}
@@ -1340,7 +1341,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},collapsedBrands:{},adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},collapsedBrands:{},taskGroupBy:"brand",adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -1477,24 +1478,35 @@ function taskList(list){
   }).join("")}</div>`;
 }
 // 브랜드별로 묶어서 표시 (업무 메뉴 전용) — 그룹 접기/펴기 지원
-function taskListByBrand(list){
-  // 브랜드 id → 업무들
+function taskListByBrand(list){ return taskListGrouped(list,"brand"); }
+// 그룹 기준(mode: "brand" | "owner")에 따라 묶어서 표시
+function taskListGrouped(list, mode){
+  mode = mode||"brand";
   const groups=new Map();
-  list.forEach(t=>{ const key=t.brandId||"__none__"; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(t); });
-  // 브랜드 이름순 정렬 (미지정은 맨 뒤)
+  list.forEach(t=>{
+    const key = mode==="owner" ? (t.ownerId||"__none__") : (t.brandId||"__none__");
+    if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(t);
+  });
+  const nameOf = key => {
+    if(key==="__none__") return mode==="owner" ? "담당자 미지정" : "브랜드 미지정";
+    return mode==="owner" ? (Store.user(key)?.name||"-") : (Store.brand(key)?.name||"-");
+  };
   const order=[...groups.keys()].sort((a,b)=>{
     if(a==="__none__") return 1; if(b==="__none__") return -1;
-    const na=Store.brand(a)?.name||"", nb=Store.brand(b)?.name||"";
-    return na.localeCompare(nb,"ko");
+    return nameOf(a).localeCompare(nameOf(b),"ko");
   });
   return order.map(key=>{
     const items=groups.get(key);
-    const bname = key==="__none__" ? "브랜드 미지정" : (Store.brand(key)?.name||"-");
-    const collapsed = !!session.collapsedBrands[key];
+    const gkey = mode+":"+key;                       // 접힘 상태 키 (모드별로 분리)
+    const collapsed = !!session.collapsedBrands[gkey];
+    const label = nameOf(key);
+    const head = mode==="owner"
+      ? `${C.avatar(Store.user(key))}<span class="bn">${esc(label)}</span>`
+      : `<span class="bn">${esc(label)}</span>`;
     return `<div class="tgroup${collapsed?" collapsed":""}">
-      <div class="tgroup-h" data-act="toggle-brand" data-brand="${key}" style="cursor:pointer">
+      <div class="tgroup-h" data-act="toggle-brand" data-brand="${gkey}" style="cursor:pointer">
         <span class="tw">${collapsed?"▸":"▾"}</span>
-        <span class="bn">${esc(bname)}</span><span class="cnt">${items.length}건</span>
+        ${head}<span class="cnt">${items.length}건</span>
       </div>
       <div class="tgroup-body"${collapsed?' style="display:none"':""}>${taskList(items)}</div>
     </div>`;
@@ -1503,6 +1515,13 @@ function taskListByBrand(list){
 function viewTasks(){
   const list=filtered(visibleTasks());
   const brands=Store.db.brands;
+  const canGroupOwner = me().role==="manager"||me().role==="executive";
+  const gmode = canGroupOwner ? (session.taskGroupBy||"brand") : "brand";
+  const groupToggle = canGroupOwner ? `
+    <span class="seg" style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden">
+      <button class="btn btn-sm ${gmode==="brand"?"btn-primary":"btn-ghost"}" data-act="task-groupby" data-mode="brand" style="border-radius:0">브랜드별</button>
+      <button class="btn btn-sm ${gmode==="owner"?"btn-primary":"btn-ghost"}" data-act="task-groupby" data-mode="owner" style="border-radius:0">담당자별</button>
+    </span>` : "";
   return `
   ${ph("업무","모든 업무를 검색·필터로 탐색합니다.", me().role==="member"?`<button class="btn btn-primary btn-sm" data-act="new-task">+ 새 업무</button>`:"")}
   <div class="toolbar">
@@ -1511,11 +1530,12 @@ function viewTasks(){
     <select id="f_brand"><option value="">브랜드 전체</option>${brands.map(b=>`<option value="${b.id}" ${session.filters.brand===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select>
     <select id="f_prio"><option value="">우선순위 전체</option>${PRIORITIES.map(p=>`<option value="${p.k}" ${session.filters.prio===p.k?"selected":""}>${p.l}</option>`).join("")}</select>
     <label class="chip" style="display:inline-flex;align-items:center"><input type="checkbox" id="f_exec" ${session.filters.hideExecuted?"checked":""} style="position:static;opacity:1;width:auto;margin-right:7px"><span style="border:0;padding:0;color:var(--ink-soft);font-weight:500">집행완료 제외</span></label>
+    ${groupToggle}
     <button class="btn btn-ghost btn-sm" data-act="clear-filter">초기화</button>
     <button class="btn btn-ghost btn-sm" data-act="collapse-all-brands">전체 접기</button>
     <button class="btn btn-ghost btn-sm" data-act="expand-all-brands">전체 펴기</button>
   </div>
-  <div class="card"><div class="card-b">${list.length?taskListByBrand(list):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.")}</div></div>`;
+  <div class="card"><div class="card-b">${list.length?taskListGrouped(list,gmode):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.")}</div></div>`;
 }
 
 function viewTask(id){
@@ -1786,7 +1806,8 @@ const Actions={
   "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
   "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:"",hideExecuted:false}; render(); },
   "toggle-brand"(el){ const key=el.dataset.brand; session.collapsedBrands[key]=!session.collapsedBrands[key]; updateTaskListOnly(); },
-  "collapse-all-brands"(){ const list=filtered(visibleTasks()); const keys=new Set(list.map(t=>t.brandId||"__none__")); keys.forEach(k=>{ session.collapsedBrands[k]=true; }); updateTaskListOnly(); },
+  "task-groupby"(el){ session.taskGroupBy=el.dataset.mode||"brand"; render(); },
+  "collapse-all-brands"(){ const list=filtered(visibleTasks()); const canOwner=me().role==="manager"||me().role==="executive"; const mode=canOwner?(session.taskGroupBy||"brand"):"brand"; const keys=new Set(list.map(t=>mode+":"+((mode==="owner"?t.ownerId:t.brandId)||"__none__"))); keys.forEach(k=>{ session.collapsedBrands[k]=true; }); updateTaskListOnly(); },
   "expand-all-brands"(){ session.collapsedBrands={}; updateTaskListOnly(); },
 
   "new-task"(){ openTaskModal(); },
@@ -3758,7 +3779,9 @@ function render(){
 function updateTaskListOnly(){ // 검색 시 전체 리렌더 대신 목록만 (입력 포커스 유지)
   const host=document.querySelector(".card .card-b"); if(!host)return;
   const list=filtered(visibleTasks());
-  host.innerHTML=list.length?taskListByBrand(list):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.");
+  const canGroupOwner = me().role==="manager"||me().role==="executive";
+  const gmode = canGroupOwner ? (session.taskGroupBy||"brand") : "brand";
+  host.innerHTML=list.length?taskListGrouped(list,gmode):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.");
 }
 
 /* =====================================================================
@@ -3963,7 +3986,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","toggle-brand","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","toggle-brand","task-groupby","collapse-all-brands","expand-all-brands","zoom","zoom-cardnews","doc-view","download-asset","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
