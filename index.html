@@ -440,6 +440,58 @@
     .g-head .lbl,.g-row .lbl{flex-basis:104px}
     .lb-nav{width:40px;height:40px;font-size:22px}
   }
+  /* ===== 블로그 원고 스튜디오 ===== */
+  .bs-wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+  @media(max-width:900px){ .bs-wrap{grid-template-columns:1fr} }
+  .bs-panel{padding:20px;position:sticky;top:16px}
+  @media(max-width:900px){ .bs-panel{position:static} }
+  .bs-field{margin-bottom:14px}
+  .bs-lab{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px}
+  .bs-in{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit;background:var(--surface);color:var(--ink)}
+  .bs-in:focus{outline:none;border-color:var(--primary)}
+  .bs-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .bs-results{padding:22px;min-height:400px}
+  .bs-empty{color:var(--muted);text-align:center;padding:60px 20px;line-height:1.8;font-size:14px}
+  .bs-progress{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .bs-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 11px;border-radius:20px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+  .bs-chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .bs-chip.done{color:var(--ink-soft)}
+  .bs-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
+  .bs-spin{width:11px;height:11px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:bs-spin .7s linear infinite}
+  @keyframes bs-spin{to{transform:rotate(360deg)}}
+  .bs-block{padding:18px 0;border-top:1px solid var(--line)}
+  .bs-block:first-child{border-top:0;padding-top:0}
+  .bs-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .bs-eyebrow .bs-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px}
+  .bs-eyebrow .bs-sub{font-weight:400;color:var(--muted);letter-spacing:0;text-transform:none}
+  .bs-meta{font-size:13px;color:var(--ink-soft);margin:0}
+  .bs-analysis{font-size:14px;line-height:1.7;color:var(--ink)}
+  .bs-topics{display:flex;flex-direction:column;gap:8px}
+  .bs-topic{text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font-size:14px;color:var(--ink);transition:.12s;display:flex;flex-direction:column;gap:5px}
+  .bs-topic:hover{border-color:var(--line-strong)}
+  .bs-topic.sel{border-color:var(--primary);background:var(--primary-weak,rgba(60,110,220,.06))}
+  .bs-tag{font-size:10.5px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.05em}
+  .bs-title{font-family:var(--fd);font-size:19px;font-weight:700;line-height:1.4;color:var(--ink)}
+  .bs-mark{background:rgba(60,110,220,.16);color:inherit;padding:0 2px;border-radius:3px}
+  .bs-h3{font-size:15px;font-weight:700;color:var(--ink);margin:18px 0 6px}
+  .bs-body{font-size:14px;line-height:1.75;color:var(--ink-soft);margin:0}
+  .bs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .bs-mini{font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-soft);cursor:pointer}
+  .bs-mini:hover{border-color:var(--line-strong)}
+  .bs-mini.bs-copied{background:var(--ok,#2e9e5b);color:#fff;border-color:transparent}
+  .bs-meter-wrap{margin:6px 0 4px}
+  .bs-meter{position:relative;height:10px;background:var(--surface-2);border-radius:20px;overflow:hidden;margin-bottom:7px}
+  .bs-zone{position:absolute;top:0;bottom:0;background:rgba(46,158,91,.25)}
+  .bs-fill{position:absolute;top:0;bottom:0;left:0;background:var(--primary);opacity:.5}
+  .bs-needle{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--ink)}
+  .bs-meter-read{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  .bs-verdict{font-weight:700}
+  .bs-verdict.ok{color:var(--ok,#2e9e5b)} .bs-verdict.low{color:var(--warn,#d9822b)} .bs-verdict.high{color:var(--warn,#d9822b)}
+  .bs-tone{font-size:12.5px;color:var(--ink-soft);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px}
+  .bs-imgcard{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden}
+  .bs-imgh{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--surface-2);font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+  .bs-prompt{padding:11px 12px;font-size:13px;line-height:1.6;color:var(--ink-soft);font-family:var(--fm);white-space:pre-wrap}
+  .bs-err{background:rgba(217,60,60,.1);border:1px solid rgba(217,60,60,.3);color:#c0392b;padding:11px 14px;border-radius:9px;font-size:13px;margin-bottom:14px}
 </style>
 </head>
 <body>
@@ -2580,6 +2632,280 @@ function viewGenerator(){
   </div>
   <div class="hint" style="margin-top:8px">※ 생성기가 안 보이면, 배포 폴더에 <code>generator.html</code> 파일이 <code>index.html</code>과 같은 위치에 있는지 확인하세요.</div>`;
 }
+
+/* ============================================================
+   블로그 원고 스튜디오 (플랫폼 통합 · 네임스페이스 격리)
+   - 모든 함수/상태는 bs 접두사, CSS는 .bs- 접두사로 충돌 방지
+   - OpenAI API 사용 (사용자 본인 키 입력)
+   ============================================================ */
+let bsState=null;
+function bsEl(t,c){ const e=document.createElement(t); if(c) e.className=c; return e; }
+function bsq(s){ return document.querySelector(s); }
+function bsEscHtml(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bsEscRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+function viewBlogStudio(){
+  return `
+  ${ph("블로그 원고 스튜디오","키워드 하나로 주제·제목·원고·이미지 프롬프트까지 자동 생성합니다. (OpenAI API 키 필요)")}
+  <div class="bs-wrap">
+    <aside class="card bs-panel">
+      <div class="bs-field"><label class="bs-lab">공략 키워드</label>
+        <input id="bs_kw" class="bs-in" type="text" placeholder="예: 강아지 수제간식" autocomplete="off"></div>
+      <div class="bs-field"><label class="bs-lab">월간 검색량 <span class="hint">(선택 · 네이버 검색광고에서 확인)</span></label>
+        <div class="bs-row2"><input id="bs_volPc" class="bs-in" type="number" placeholder="PC" min="0"><input id="bs_volMo" class="bs-in" type="number" placeholder="모바일" min="0"></div></div>
+      <div class="bs-field"><label class="bs-lab">문단 수</label>
+        <select id="bs_secCount" class="bs-in"><option value="4">4개</option><option value="5" selected>5개</option><option value="6">6개</option><option value="7">7개</option></select></div>
+      <div class="bs-field"><label class="bs-lab">OpenAI API 키 <span class="hint">(필수)</span></label>
+        <input id="bs_apiKey" class="bs-in" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false"></div>
+      <div class="bs-field"><label class="bs-lab">모델</label>
+        <select id="bs_model" class="bs-in"><option value="gpt-4o-mini" selected>gpt-4o-mini (저렴)</option><option value="gpt-4o">gpt-4o</option><option value="gpt-4.1">gpt-4.1</option><option value="gpt-4.1-mini">gpt-4.1-mini</option></select></div>
+      <button id="bs_run" class="btn btn-primary" style="width:100%;margin-top:6px">분석하고 자동 생성</button>
+      <div class="hint" style="margin-top:12px;line-height:1.6">
+        키는 <code>platform.openai.com</code> → API keys에서 발급합니다. 사용량만큼 과금돼요.
+        입력한 키는 이 브라우저 세션에만 임시 저장되고 서버로 보내지 않습니다(OpenAI 요청 제외).
+      </div>
+    </aside>
+    <main class="card bs-results">
+      <div id="bs_progress" class="bs-progress" style="display:none"></div>
+      <div id="bs_errbox"></div>
+      <div id="bs_out"><div class="bs-empty">왼쪽에 <b>공략 키워드</b>를 넣고 버튼을 누르면<br>주제부터 이미지 프롬프트까지 순서대로 채워집니다.</div></div>
+    </main>
+  </div>`;
+}
+
+/* ---- OpenAI 호출 ---- */
+async function bsCallAI(prompt, maxTokens=1000){
+  const key=(bsq("#bs_apiKey")?.value||"").trim();
+  if(!key) throw new Error("OpenAI API 키를 먼저 입력해 주세요. (platform.openai.com → API keys)");
+  const model=(bsq("#bs_model")?.value||"gpt-4o-mini");
+  let res;
+  try{
+    res=await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model,max_tokens:maxTokens,messages:[
+        {role:"system",content:"너는 한국어로 답하는 네이버 블로그 SEO·카피라이팅 전문가야. 지시받은 JSON 형식만 정확히 출력한다."},
+        {role:"user",content:prompt}
+      ]})
+    });
+  }catch(e){ throw new Error("서버에 연결하지 못했어요 (Failed to fetch). 네트워크 연결을 확인해 주세요."); }
+  if(!res.ok){
+    let d=""; try{ d=(await res.json()).error?.message||""; }catch(e){}
+    if(res.status===401) throw new Error("인증 실패 (401). OpenAI API 키가 올바르지 않아요.");
+    if(res.status===429) throw new Error("요청 한도 초과 또는 크레딧 부족 (429). OpenAI 결제/사용량을 확인해 주세요.");
+    throw new Error("AI 응답 오류 ("+res.status+") "+d);
+  }
+  const data=await res.json();
+  return (data.choices?.[0]?.message?.content||"").trim();
+}
+function bsParseJSON(text){
+  let t=text.replace(/```json/gi,"").replace(/```/g,"").trim();
+  const s=t.indexOf("{"); if(s>0) t=t.slice(s);
+  const tries=[t];
+  const e=t.lastIndexOf("}"); if(e>0) tries.push(t.slice(0,e+1));
+  const san=bsSanitizeJSON(t); tries.push(san);
+  const e2=san.lastIndexOf("}"); if(e2>0) tries.push(san.slice(0,e2+1));
+  tries.push(bsCloseTruncated(san));
+  for(const a of tries){ try{ return JSON.parse(a); }catch(_){} }
+  throw new Error("AI가 형식에 맞지 않는 응답을 보냈어요. 다시 시도해 주세요.");
+}
+function bsSanitizeJSON(t){
+  let out="",inStr=false,esc=false;
+  for(let i=0;i<t.length;i++){ const ch=t[i],code=t.charCodeAt(i);
+    if(inStr){ if(esc){out+=ch;esc=false;continue;} if(ch==="\\"){out+=ch;esc=true;continue;}
+      if(ch==='"'){inStr=false;out+=ch;continue;}
+      if(code<0x20){ out+= ch==="\n"?"\\n":ch==="\t"?"\\t":ch==="\r"?"\\r":" "; continue; }
+      out+=ch;
+    }else{ if(ch==='"'){inStr=true;} out+=ch; }
+  }
+  return out;
+}
+function bsCloseTruncated(t){
+  let inStr=false,esc=false; const stack=[];
+  for(let i=0;i<t.length;i++){ const ch=t[i];
+    if(inStr){ if(esc){esc=false;continue;} if(ch==="\\"){esc=true;continue;} if(ch==='"') inStr=false; continue; }
+    if(ch==='"') inStr=true; else if(ch==="{"||ch==="[") stack.push(ch); else if(ch==="}"||ch==="]") stack.pop();
+  }
+  let r=t; if(inStr) r+='"'; r=r.replace(/,\s*$/,"");
+  while(stack.length){ r+=(stack.pop()==="{"?"}":"]"); }
+  return r;
+}
+
+/* ---- 프롬프트 ---- */
+function bsVolLine(){ const p=bsState.volPc,m=bsState.volMo;
+  if(!p&&!m) return "검색량 정보는 제공되지 않았어. 일반적인 검색 의도를 가정해.";
+  return `월간 검색량 — PC ${p||0}회, 모바일 ${m||0}회. 검색량 규모와 모바일·PC 비중을 전략에 반영해.`; }
+async function bsPlanTopics(){
+  const p=`너는 네이버 블로그 상위노출 전문가야.
+공략 키워드: "${bsState.keyword}"
+${bsVolLine()}
+이 키워드로 상위 노출을 노릴 블로그 글의 주제를 서로 다른 각도로 3개 제안해.
+반드시 JSON만 출력. 한 줄로, 문자열 안에는 실제 줄바꿈을 넣지 마:
+{"analysis":"검색 의도와 검색량 규모를 반영한 공략 전략 2문장","topics":["주제1","주제2","주제3"]}`;
+  return bsParseJSON(await bsCallAI(p,1200));
+}
+async function bsPlanDetail(topic){
+  const p=`너는 네이버 블로그 상위노출 전문가야.
+공략 키워드: "${bsState.keyword}"
+선택 주제: "${topic}"
+${bsVolLine()}
+이 글의 제목과 문단 구성을 설계해.
+[제목 조건] 반드시 메인 키워드 "${bsState.keyword}"로 시작. 공백 포함 25~40자. 정보성+클릭 유도.
+[문단 조건] 문단은 정확히 ${bsState.secCount}개. 각 문단 keywordCount 합이 10~15(각 1~4회). 각 문단 imageFocus 구체적으로. 공통 tone 한 문장.
+반드시 JSON만 출력. 한 줄로, 문자열 안에는 실제 줄바꿈을 넣지 마:
+{"title":"...","titleReason":"글자수와 키워드 배치 1문장","tone":"실사 이미지 공통 톤앤매너 1문장","sections":[{"heading":"소제목","brief":"1문장","keywordCount":2,"imageFocus":"이미지 핵심 피사체"}]}`;
+  return bsParseJSON(await bsCallAI(p,2500));
+}
+async function bsWriteSection(sec){
+  const p=`너는 사람이 쓴 것처럼 자연스러운 네이버 블로그 작가야.
+공략 키워드: "${bsState.keyword}"
+글 제목: "${bsState.title}"
+문단 소제목: "${sec.heading}"
+이 문단 방향: "${sec.brief}"
+[본문] 정보성 있고 자연스러운 본문 4~7문장. 공략 키워드 "${bsState.keyword}"를 정확히 ${sec.keywordCount}회 자연스럽게 포함. 친근한 정보체.
+[이미지 프롬프트] 실사 이미지 생성 프롬프트. 핵심 피사체: "${sec.imageFocus}". 공통 톤앤매너: "${bsState.tone}" 반영. 피사체·구도·조명·색감 포함.
+반드시 JSON만 출력. 한 줄로, 문자열 안에는 실제 줄바꿈을 넣지 마:
+{"body":"본문...","imagePrompt":"실사 이미지 프롬프트..."}`;
+  return bsParseJSON(await bsCallAI(p,2000));
+}
+
+/* ---- 카운팅/하이라이트 ---- */
+function bsCountKw(text){ if(!bsState.keyword) return 0; const m=text.match(new RegExp(bsEscRe(bsState.keyword),"g")); return m?m.length:0; }
+function bsHighlight(text){ const re=new RegExp(bsEscRe(bsState.keyword),"g"); return bsEscHtml(text).replace(re,m=>`<mark class="bs-mark">${m}</mark>`); }
+
+/* ---- 진행 표시 ---- */
+const BS_STEPS=["키워드 분석","주제 선정","제목 작성","원고 작성","이미지 프롬프트"];
+function bsRenderProgress(idx,doneAll){
+  const box=bsq("#bs_progress"); if(!box) return; box.style.display="flex"; box.innerHTML="";
+  BS_STEPS.forEach((s,i)=>{ const c=bsEl("div","bs-chip"); let ic="";
+    if(doneAll||i<idx){ c.classList.add("done"); ic='<span class="bs-dot"></span>'; }
+    else if(i===idx){ c.classList.add("active"); ic='<span class="bs-spin"></span>'; }
+    else { ic='<span class="bs-dot"></span>'; }
+    c.innerHTML=ic+s; box.appendChild(c); });
+}
+
+/* ---- 복사 버튼 ---- */
+function bsCopyBtn(getText,label="복사"){
+  const b=bsEl("button","bs-mini"); b.textContent=label;
+  b.onclick=async()=>{ try{ await navigator.clipboard.writeText(getText()); }
+    catch(e){ const t=document.createElement("textarea"); t.value=getText(); document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+    b.textContent="복사됨"; b.classList.add("bs-copied"); setTimeout(()=>{ b.textContent=label; b.classList.remove("bs-copied"); },1200); };
+  return b;
+}
+
+/* ---- 결과 렌더 ---- */
+function bsRender(){
+  const out=bsq("#bs_out"); if(!out) return; out.innerHTML="";
+  // 01 분석
+  const b1=bsEl("div","bs-block");
+  b1.innerHTML=`<p class="bs-eyebrow"><span class="bs-num">01</span> 키워드 분석</p>`;
+  const meta=bsEl("p","bs-meta");
+  meta.innerHTML=(bsState.volPc||bsState.volMo)?`검색량 입력값 — PC <b>${bsState.volPc||0}</b> · 모바일 <b>${bsState.volMo||0}</b>`:`검색량 미입력 — 일반 검색 의도로 진행`;
+  const an=bsEl("p","bs-analysis"); an.style.marginTop="8px"; an.textContent=bsState.analysis||"";
+  b1.append(meta,an); out.appendChild(b1);
+  // 02 주제
+  const b2=bsEl("div","bs-block");
+  b2.innerHTML=`<p class="bs-eyebrow"><span class="bs-num">02</span> 자동 주제 선정 <span class="bs-sub">· 다른 주제를 누르면 다시 생성돼요</span></p>`;
+  const tl=bsEl("div","bs-topics");
+  bsState.topics.forEach((t,i)=>{ const tb=bsEl("button","bs-topic"+(t===bsState.selectedTopic?" sel":""));
+    tb.innerHTML=`<span class="bs-tag">${t===bsState.selectedTopic?"선택됨":"대안 "+(i+1)}</span>${bsEscHtml(t)}`;
+    tb.onclick=()=>{ if(t!==bsState.selectedTopic) bsRegenFromTopic(t); }; tl.appendChild(tb); });
+  b2.appendChild(tl); out.appendChild(b2);
+  // 03 제목
+  const b3=bsEl("div","bs-block");
+  b3.innerHTML=`<p class="bs-eyebrow"><span class="bs-num">03</span> 자동 제목 작성</p>`;
+  const to=bsEl("div","bs-title"); to.innerHTML=bsHighlight(bsState.title);
+  const tlen=[...bsState.title].length;
+  const tm=bsEl("div","bs-meta"); tm.style.marginTop="4px";
+  tm.innerHTML=`공백 포함 <b>${tlen}자</b> · 메인 키워드 맨 앞 ${bsState.title.startsWith(bsState.keyword)?"✓":"—"}<br><span style="color:var(--muted)">${bsEscHtml(bsState.titleReason||"")}</span>`;
+  const act3=bsEl("div","bs-actions"); act3.append(bsCopyBtn(()=>bsState.title,"제목 복사"));
+  const rt=bsEl("button","bs-mini"); rt.textContent="제목·구성 다시"; rt.onclick=()=>bsRegenFromTopic(bsState.selectedTopic); act3.appendChild(rt);
+  b3.append(to,tm,act3); out.appendChild(b3);
+  // 04 원고
+  const b4=bsEl("div","bs-block");
+  const total=bsState.sections.reduce((a,s)=>a+bsCountKw(s.body||""),0);
+  b4.innerHTML=`<p class="bs-eyebrow"><span class="bs-num">04</span> 자동 원고 작성</p>`;
+  const MAX=20, pct=x=>Math.min(100,(x/MAX)*100);
+  let verdict="ok",vtext="적정"; if(total<10){verdict="low";vtext="부족 (10회 미만)";} else if(total>15){verdict="high";vtext="과다 (15회 초과)";}
+  const mw=bsEl("div","bs-meter-wrap");
+  mw.innerHTML=`<div class="bs-meter"><div class="bs-zone" style="left:${pct(10)}%;right:${100-pct(15)}%"></div><div class="bs-fill" style="width:${pct(total)}%"></div><div class="bs-needle" style="left:calc(${pct(total)}% - 1.5px)"></div></div>
+    <div class="bs-meter-read"><span>키워드 밀도 · 목표 10~15회</span><span>키워드 <b>${total}</b>회 · <span class="bs-verdict ${verdict}">${vtext}</span></span></div>`;
+  b4.appendChild(mw);
+  bsState.sections.forEach((s,i)=>{ const h=bsEl("h3","bs-h3"); h.textContent=s.heading; b4.appendChild(h);
+    const p=bsEl("p","bs-body"); p.innerHTML=bsHighlight(s.body||""); b4.appendChild(p);
+    const a=bsEl("div","bs-actions"); a.style.marginTop="6px"; const rb=bsEl("button","bs-mini"); rb.textContent="이 문단 다시"; rb.onclick=()=>bsRegenSection(i); a.appendChild(rb); b4.appendChild(a); });
+  const act4=bsEl("div","bs-actions"); act4.append(bsCopyBtn(()=>bsFullText(),"원고 전체 복사"));
+  const ra=bsEl("button","bs-mini"); ra.textContent="원고 전체 다시"; ra.onclick=()=>bsRegenAll(); act4.appendChild(ra);
+  b4.appendChild(act4); out.appendChild(b4);
+  // 05 이미지 프롬프트
+  const b5=bsEl("div","bs-block");
+  b5.innerHTML=`<p class="bs-eyebrow"><span class="bs-num">05</span> 문단별 실사 이미지 프롬프트</p>`;
+  const tbd=bsEl("div","bs-tone"); tbd.textContent="공통 톤앤매너 · "+bsState.tone; b5.appendChild(tbd);
+  bsState.sections.forEach((s,i)=>{ const c=bsEl("div","bs-imgcard"); const h=bsEl("div","bs-imgh");
+    const hs=bsEl("span"); hs.textContent=`문단 ${i+1} · ${s.heading}`; h.append(hs,bsCopyBtn(()=>s.imagePrompt,"복사"));
+    const pr=bsEl("div","bs-prompt"); pr.textContent=s.imagePrompt||""; c.append(h,pr); b5.appendChild(c); });
+  const act5=bsEl("div","bs-actions"); act5.append(bsCopyBtn(()=>bsAllPrompts(),"모든 프롬프트 복사")); b5.appendChild(act5);
+  out.appendChild(b5);
+}
+function bsFullText(){ let t=bsState.title+"\n\n"; bsState.sections.forEach(s=>{ t+="■ "+s.heading+"\n"+(s.body||"")+"\n\n"; }); return t.trim(); }
+function bsAllPrompts(){ let t="[공통 톤앤매너] "+bsState.tone+"\n\n"; bsState.sections.forEach((s,i)=>{ t+=`[문단 ${i+1} · ${s.heading}]\n${s.imagePrompt}\n\n`; }); return t.trim(); }
+
+/* ---- 플로우 ---- */
+function bsShowErr(msg){ const e=bsq("#bs_errbox"); if(e) e.innerHTML=`<div class="bs-err">⚠ ${bsEscHtml(msg)}</div>`; }
+function bsClearErr(){ const e=bsq("#bs_errbox"); if(e) e.innerHTML=""; }
+
+async function bsRunAll(){
+  const kw=(bsq("#bs_kw")?.value||"").trim();
+  if(!kw){ bsShowErr("공략 키워드를 입력해 주세요."); bsq("#bs_kw")?.focus(); return; }
+  if(!(bsq("#bs_apiKey")?.value||"").trim()){ bsShowErr("OpenAI API 키를 입력해 주세요."); bsq("#bs_apiKey")?.focus(); return; }
+  try{ sessionStorage.setItem("bs_apikey", bsq("#bs_apiKey").value.trim()); }catch(e){}
+  bsClearErr(); const runBtn=bsq("#bs_run"); runBtn.disabled=true; runBtn.textContent="생성 중…";
+  bsState={ keyword:kw, volPc:parseInt(bsq("#bs_volPc").value)||0, volMo:parseInt(bsq("#bs_volMo").value)||0,
+    secCount:parseInt(bsq("#bs_secCount").value)||5, analysis:"",topics:[],selectedTopic:"",title:"",titleReason:"",tone:"",sections:[] };
+  bsq("#bs_out").innerHTML="";
+  try{
+    bsRenderProgress(0);
+    const tp=await bsPlanTopics(); bsState.analysis=tp.analysis; bsState.topics=tp.topics||[]; bsState.selectedTopic=bsState.topics[0]||kw;
+    bsRenderProgress(2);
+    const d=await bsPlanDetail(bsState.selectedTopic); bsState.title=d.title; bsState.titleReason=d.titleReason; bsState.tone=d.tone;
+    bsState.sections=(d.sections||[]).map(s=>({...s,body:"",imagePrompt:""}));
+    bsRenderProgress(3);
+    for(let i=0;i<bsState.sections.length;i++){ const r=await bsWriteSection(bsState.sections[i]); bsState.sections[i].body=r.body; bsState.sections[i].imagePrompt=r.imagePrompt; }
+    bsRenderProgress(4,true); bsRender();
+  }catch(e){ bsShowErr(e.message||"생성 중 문제가 발생했어요."); bsq("#bs_progress").style.display="none"; }
+  finally{ runBtn.disabled=false; runBtn.textContent="분석하고 자동 생성"; }
+}
+async function bsRegenFromTopic(topic){
+  bsClearErr(); bsState.selectedTopic=topic; const runBtn=bsq("#bs_run"); runBtn.disabled=true;
+  try{ bsRenderProgress(2);
+    const d=await bsPlanDetail(topic); bsState.title=d.title; bsState.titleReason=d.titleReason; bsState.tone=d.tone;
+    bsState.sections=(d.sections||[]).map(s=>({...s,body:"",imagePrompt:""}));
+    bsRenderProgress(3);
+    for(let i=0;i<bsState.sections.length;i++){ const r=await bsWriteSection(bsState.sections[i]); bsState.sections[i].body=r.body; bsState.sections[i].imagePrompt=r.imagePrompt; }
+    bsRenderProgress(4,true); bsRender();
+  }catch(e){ bsShowErr(e.message); } finally{ runBtn.disabled=false; }
+}
+async function bsRegenSection(i){
+  bsClearErr();
+  try{ const r=await bsWriteSection(bsState.sections[i]); bsState.sections[i].body=r.body; bsState.sections[i].imagePrompt=r.imagePrompt; bsRender(); }
+  catch(e){ bsShowErr(e.message); }
+}
+async function bsRegenAll(){
+  bsClearErr(); const runBtn=bsq("#bs_run"); runBtn.disabled=true;
+  try{ bsRenderProgress(3);
+    for(let i=0;i<bsState.sections.length;i++){ const r=await bsWriteSection(bsState.sections[i]); bsState.sections[i].body=r.body; bsState.sections[i].imagePrompt=r.imagePrompt; }
+    bsRenderProgress(4,true); bsRender();
+  }catch(e){ bsShowErr(e.message); } finally{ runBtn.disabled=false; }
+}
+
+/* ---- 초기화(화면 진입 시) ---- */
+function wireBlogStudio(){
+  const runBtn=bsq("#bs_run"); if(runBtn) runBtn.onclick=bsRunAll;
+  const kw=bsq("#bs_kw"); if(kw) kw.addEventListener("keydown",e=>{ if(e.key==="Enter") bsRunAll(); });
+  // 세션에 저장된 API 키 복원
+  try{ const saved=sessionStorage.getItem("bs_apikey"); if(saved && bsq("#bs_apiKey")) bsq("#bs_apiKey").value=saved; }catch(e){}
+}
+
 function viewBrands(){
   const brands=Store.db.brands.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   return `
@@ -3705,6 +4031,7 @@ function navConfig(){
   base.push({view:"community",ic:"🗣️",label:"커뮤니티"});
   base.push({view:"meetings",ic:"📋",label:"회의"});
   base.push({view:"generator",ic:"🎨",label:"생성기"});
+  base.push({view:"blog",ic:"✍️",label:"블로그 원고"});
   base.push({view:"ads",ic:"📈",label:"광고 분석"});
   base.push({view:"content",ic:"📱",label:"콘텐츠 성과"});
   base.push({view:"expenses",ic:"🧾",label:"지출결의서"});
@@ -3750,6 +4077,7 @@ function render(){
   else if(v==="notify") html=viewNotify();
   else if(v==="brand") html=viewBrands();
   else if(v==="generator") html=viewGenerator();
+  else if(v==="blog") html=viewBlogStudio();
   else if(v==="ads") html=viewAds();
   else if(v==="content") html=viewContent();
   else if(v==="expenses") html=viewExpenses();
@@ -3764,6 +4092,7 @@ function render(){
   if(v==="meetings") wireGantt();
   if(v==="task") wireAssetReorder();
   if(v==="content"){ const ps=document.getElementById("c_period"); if(ps) ps.onchange=()=>{ session.contentPeriod=ps.value; render(); }; }
+  if(v==="blog") wireBlogStudio();
   // 필터 입력 연결 (업무 뷰)
   if(v==="tasks"){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
