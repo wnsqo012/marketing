@@ -1748,9 +1748,11 @@ function viewTask(id){
     <div>
       <!-- 산출물 -->
       <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>산출물</h3><span class="tag">${assets.length}</span>
-        ${assets.filter(a=>a.fileData).length>=2?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-act="bulk-download" data-id="${t.id}">⬇ 전체 다운로드 (ZIP)</button>`:""}
-        ${["member","manager"].includes(role)&&assets.some(a=>(a.fileMime||"").startsWith("image/"))?`<button class="btn btn-ghost btn-sm" ${assets.filter(a=>a.fileData).length>=2?"":'style="margin-left:auto"'} data-act="bulk-replace" data-id="${t.id}">🖼 이미지 일괄 교체</button>`:""}
-        ${["member","manager"].includes(role)?`<button class="btn btn-ghost btn-sm" ${(assets.some(a=>(a.fileMime||"").startsWith("image/"))||assets.filter(a=>a.fileData).length>=2)?"":'style="margin-left:auto"'} data-act="add-asset" data-id="${t.id}">+ 산출물</button>`:""}</div>
+        ${["member","manager"].includes(role)&&assets.length?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-act="ai-precheck" data-id="${t.id}">🤖 AI 사전 점검</button>`:""}
+        ${assets.filter(a=>a.fileData).length>=2?`<button class="btn btn-ghost btn-sm" ${["member","manager"].includes(role)&&assets.length?"":'style="margin-left:auto"'} data-act="bulk-download" data-id="${t.id}">⬇ 전체 다운로드 (ZIP)</button>`:""}
+        ${["member","manager"].includes(role)&&assets.some(a=>(a.fileMime||"").startsWith("image/"))?`<button class="btn btn-ghost btn-sm" data-act="bulk-replace" data-id="${t.id}">🖼 이미지 일괄 교체</button>`:""}
+        ${["member","manager"].includes(role)?`<button class="btn btn-ghost btn-sm" data-act="add-asset" data-id="${t.id}">+ 산출물</button>`:""}</div>
+        <div id="aiPrecheckBox_${t.id}"></div>
         <div class="card-b">${assets.length?`<div class="alist" id="asset-list" data-task="${t.id}">${assets.map(a=>assetCard(a)).join("")}</div>`:C.empty("📎","산출물 없음","‘+ 산출물’로 결과물을 등록하세요.")}</div></div>
 
       ${coReviewBlock(t, role)}
@@ -2093,6 +2095,42 @@ const Actions={
       const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(u),1500);
     }catch(e){ console.error(e); toast("직접 다운로드 실패 — 새 탭에서 열어 저장하세요"); window.open(url,"_blank"); }
+  },
+  async "ai-precheck"(el){
+    const t=Store.task(el.dataset.id); if(!t) return;
+    const assets=Store.assetsOf(t.id); if(!assets.length){ toast("점검할 산출물이 없습니다"); return; }
+    const box=document.getElementById("aiPrecheckBox_"+t.id);
+    const CH_LAB={tone:"브랜드 톤",cta:"CTA",typo:"오탈자",legal:"법무",review:"심의"};
+    if(box) box.innerHTML=`<div class="callout" style="margin:0 0 4px;display:flex;align-items:center;gap:9px"><span class="bs-spin" style="border-color:rgba(0,0,0,.15);border-top-color:var(--primary)"></span> AI가 산출물 ${assets.length}건을 점검 중입니다…</div>`;
+    const brand=Store.brand(t.brandId);
+    const warnings=[];
+    let done=0;
+    for(const a of assets){
+      try{
+        const checks=await AiService.checks(a,t,brand);
+        await Store.update("assets",a.id,{checks},()=>{a.checks=checks;});
+        Object.keys(CH_LAB).forEach(k=>{ const c=checks&&checks[k]; if(c&&c.status==="warn") warnings.push({asset:a.note||ASSET_TYPES[a.type]||"산출물",label:CH_LAB[k],note:c.note||""}); });
+      }catch(e){ console.error("precheck 실패",e); }
+      done++;
+      if(box) box.querySelector(".callout").innerHTML=`<span class="bs-spin" style="border-color:rgba(0,0,0,.15);border-top-color:var(--primary)"></span> AI 점검 중… (${done}/${assets.length})`;
+    }
+    // 결과 요약 배너
+    if(box){
+      if(!warnings.length){
+        box.innerHTML=`<div class="callout" style="margin:0 0 4px;border-color:var(--ok)">✅ AI 사전 점검 완료 — 모든 항목 이상 없음. 안심하고 검토 요청하셔도 좋아요.</div>`;
+      }else{
+        const items=warnings.map(w=>`<li style="margin:2px 0"><b>${esc(w.asset)}</b> · ${esc(w.label)}${w.note?` — ${esc(w.note)}`:""}</li>`).join("");
+        box.innerHTML=`<div class="callout" style="margin:0 0 4px;border-color:var(--warn)">
+          <div style="font-weight:700;margin-bottom:6px">⚠ AI 사전 점검 — 확인 권장 ${warnings.length}건</div>
+          <ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.6">${items}</ul>
+          <div class="hint" style="margin-top:7px">검토 요청 전 위 항목을 확인하면 반려 가능성을 줄일 수 있어요. (경고는 참고용이며 강제는 아닙니다)</div>
+        </div>`;
+      }
+    }
+    // 카드의 개별 체크 표시도 갱신되도록 목록만 다시 그림
+    const listBox=document.getElementById("asset-list");
+    if(listBox) listBox.innerHTML=Store.assetsOf(t.id).map(a=>assetCard(a)).join("");
+    toast(warnings.length?`AI 점검 완료 · 확인 권장 ${warnings.length}건`:"AI 점검 완료 · 이상 없음");
   },
   async "bulk-download"(el){
     const t=Store.task(el.dataset.id); if(!t) return;
