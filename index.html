@@ -492,6 +492,19 @@
   .bs-imgh{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--surface-2);font-size:12.5px;font-weight:600;color:var(--ink-soft)}
   .bs-prompt{padding:11px 12px;font-size:13px;line-height:1.6;color:var(--ink-soft);font-family:var(--fm);white-space:pre-wrap}
   .bs-err{background:rgba(217,60,60,.1);border:1px solid rgba(217,60,60,.3);color:#c0392b;padding:11px 14px;border-radius:9px;font-size:13px;margin-bottom:14px}
+  /* 나의 오늘 카드 */
+  .mytoday .mt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  @media(max-width:820px){ .mytoday .mt-grid{grid-template-columns:1fr;gap:14px} }
+  .mytoday .mt-col{padding:0 16px;border-right:1px solid var(--line)}
+  .mytoday .mt-col:first-child{padding-left:0} .mytoday .mt-col:last-child{padding-right:0;border-right:0}
+  @media(max-width:820px){ .mytoday .mt-col{padding:0;border-right:0;border-bottom:1px solid var(--line);padding-bottom:12px} .mytoday .mt-col:last-child{border-bottom:0} }
+  .mytoday .mt-h{font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:10px}
+  .mytoday .mt-row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-radius:8px;cursor:pointer;transition:.12s}
+  .mytoday .mt-row:hover{background:var(--surface-2)}
+  .mytoday .mt-badge{flex-shrink:0;font-size:10px;font-weight:700;color:#fff;padding:2px 7px;border-radius:20px;min-width:34px;text-align:center}
+  .mytoday .mt-name{flex:1;min-width:0;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mytoday .mt-sub{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;max-width:40%;overflow:hidden;text-overflow:ellipsis}
+  .mytoday .mt-empty{font-size:12.5px;color:var(--muted);padding:8px 6px}
 </style>
 </head>
 <body>
@@ -1248,6 +1261,38 @@ const Notify=(()=>{
       send({type,recipientRole:"manager+member",taskId:t.id});
     });
   }
+  // 팀원 본인용: 내가 맡은 업무의 마감 임박(D-1/D-day/지연)을 로그인 시 화면 토스트로 알림
+  // (하루 1회만: 브라우저 세션 기준으로 오늘 이미 띄운 업무는 다시 안 띄움)
+  function memberDeadlineCheck(){
+    const u=me(); if(!u || u.role!=="member") return;
+    const now=Date.now(), day=86400000;
+    const sod=ts=>{ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); };
+    const todayDay=sod(now), todayKey=new Date(now).toISOString().slice(0,10);
+    let shown; try{ shown=JSON.parse(sessionStorage.getItem("dlSeen_"+todayKey)||"[]"); }catch(e){ shown=[]; }
+    const seen=new Set(shown);
+    const hits=[];
+    Store.db.tasks.forEach(t=>{
+      if(STATUS[t.status].idx>=STATUS.manager_review.idx) return;  // 팀원 작업 단계(기획·제작·수정)만
+      if(!Store.isWorker(t.id, u.id)) return;                     // 내가 맡은 업무만
+      if(!t.due) return;
+      const diffDays=Math.round((sod(t.due)-todayDay)/day);
+      let label=null;
+      if(diffDays<0) label="지연";
+      else if(diffDays===0) label="오늘 마감";
+      else if(diffDays===1) label="내일 마감";
+      if(!label) return;
+      if(seen.has(t.id)) return;
+      hits.push({t,label,diffDays}); seen.add(t.id);
+    });
+    if(!hits.length) return;
+    // 지연 > 오늘 > 내일 순으로 정렬해 순차 표시
+    hits.sort((a,b)=>a.diffDays-b.diffDays);
+    hits.forEach(h=>{
+      const b=Store.brand(h.t.brandId);
+      notifToast(`⏰ ${h.label}`, `${b?b.name+" · ":""}${h.t.title}`, h.t.id);
+    });
+    try{ sessionStorage.setItem("dlSeen_"+todayKey, JSON.stringify([...seen])); }catch(e){}
+  }
   async function testEmail(){
     const cfg=Settings.get();
     const u=me(); if(!u){ toast("로그인이 필요합니다"); return; }
@@ -1285,7 +1330,12 @@ const Notify=(()=>{
     const mgrs=Store.db.users.filter(u=>u.role==="manager"&&u.id!==me().id);
     for(const u of mgrs){ await Store.addNotif({id:Store.uid(),type:"coreview_done",taskId:task.id,recipientId:u.id,recipientRole:u.role,channel:"email",message:body,status:"queued",errorMessage:null,sentAt:Date.now()}); }
   }
-  return {send, deadlineCheck, taskUrl, testEmail, notifyNewPost, notifyNewComment, sendReviewEvent, notifyMeeting, notifyCoreview, notifyCoreviewDone};
+  async function notifyAllReviewsDone(task){
+    const body=`[${task.title||"업무"}] 공동검수자 전원이 검수를 완료했습니다 — 최종 승인/반려를 진행해 주세요`;
+    const mgrs=Store.db.users.filter(u=>u.role==="manager");
+    for(const u of mgrs){ await Store.addNotif({id:Store.uid(),type:"coreview_all_done",taskId:task.id,recipientId:u.id,recipientRole:u.role,channel:"email",message:body,status:"queued",errorMessage:null,sentAt:Date.now()}); }
+  }
+  return {send, deadlineCheck, memberDeadlineCheck, taskUrl, testEmail, notifyNewPost, notifyNewComment, sendReviewEvent, notifyMeeting, notifyCoreview, notifyCoreviewDone, notifyAllReviewsDone};
 })();
 
 /* =====================================================================
@@ -1480,6 +1530,7 @@ function dashMember(){
   const done=mine.filter(t=>STATUS[t.status].idx>=STATUS.executed.idx).sort((a,b)=>b.updatedAt-a.updatedAt);
   return `
   ${ph("내 업무","오늘 할 일과 마감을 확인하세요.", `<button class="btn btn-primary btn-sm" data-act="new-task">+ 새 업무</button>`)}
+  ${myTodayCard()}
   <div class="grid g4" style="margin-bottom:18px">
     ${C.stat({l:"오늘 할 일",v:todo.length,accent:true})}
     ${C.stat({l:"오늘 마감",v:today.length})}
@@ -1493,6 +1544,61 @@ function dashMember(){
   <div class="card" style="margin-top:18px"><div class="card-h"><h3>완료 업무 (집행완료·성과분석)</h3><span class="tag">${done.length}건</span></div>
     <div class="card-b">${done.length?taskList(done):C.empty("📦","완료된 업무 없음","‘집행 완료’ 처리하면 여기에 이력으로 남습니다.")}</div></div>
   ${workloadCard(mine,"내 업무 연·월별 건수")}`;
+}
+
+/* "나의 오늘" — 흩어진 내 정보를 한 카드에 모아 보여줌 (팀원용) */
+function myTodayCard(){
+  const u=me(), now=Date.now(), day=86400000;
+  const sod=ts=>{ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); };
+  const todayDay=sod(now);
+  // 1) 내가 맡은(소유·공동담당·공동검수) 마감 임박/지연 업무
+  const myTasks=Store.db.tasks.filter(t=>
+    (t.ownerId===u.id || Store.membersOf(t.id).some(m=>m.userId===u.id) || Store.isReviewer(t.id,u.id))
+    && STATUS[t.status].idx<STATUS.executed.idx && t.due);
+  const dueList=myTasks.map(t=>({t,d:Math.round((sod(t.due)-todayDay)/day)}))
+    .filter(x=>x.d<=1).sort((a,b)=>a.d-b.d);   // 지연·오늘·내일
+  // 2) 나에게 온 검토 피드백 (팀장 반려/승인 의견 최근순)
+  const myFeedback=Store.db.tasks
+    .filter(t=>t.ownerId===u.id || Store.membersOf(t.id).some(m=>m.userId===u.id))
+    .map(t=>{ const r=Store.reviewsOf(t.id).find(rv=>rv.role==="manager"&&(rv.comment||rv.cat)); return r?{t,r}:null; })
+    .filter(Boolean).sort((a,b)=>b.r.createdAt-a.r.createdAt).slice(0,3);
+  // 3) 내 잔여 연차
+  let leaveTxt="—", leaveColor="var(--muted)";
+  if(typeof leaveSummary==="function" && u.hireDate){
+    const s=leaveSummary(u,new Date()); const avail=s.remain-s.upcoming;
+    leaveTxt=`${fmtDays(Math.max(0,avail))}일`; leaveColor=avail>0?"var(--ok)":"var(--warn)";
+  }
+  // 4) 내가 올린 집행 대기 지출
+  let pendingExp=[];
+  if(typeof EXPENSE_OK!=="undefined" && EXPENSE_OK){
+    pendingExp=Store.expensesAll().filter(e=>e.status==="pending"&&(e.createdBy===u.id||e.drafterId===u.id));
+  }
+  const pendingExpSum=pendingExp.reduce((s,e)=>s+(e.total||0),0);
+
+  // ---- 렌더 ----
+  const dueHtml = dueList.length
+    ? dueList.slice(0,5).map(x=>{ const b=Store.brand(x.t.brandId); const lab=x.d<0?"지연":x.d===0?"오늘":"내일";
+        const c=x.d<0?"var(--warn)":x.d===0?"var(--brass)":"var(--ink-soft)";
+        return `<div class="mt-row" data-act="open-task" data-id="${x.t.id}"><span class="mt-badge" style="background:${c}">${lab}</span><span class="mt-name">${esc(x.t.title)}</span><span class="mt-sub">${esc(b?b.name:"")}</span></div>`; }).join("")
+    : `<div class="mt-empty">마감 임박 업무 없음 👍</div>`;
+  const fbHtml = myFeedback.length
+    ? myFeedback.map(x=>{ const dec=x.r.decision==="rejected"?"반려":x.r.decision==="approved"?"승인":"의견";
+        const c=x.r.decision==="rejected"?"var(--warn)":"var(--ok)";
+        return `<div class="mt-row" data-act="open-task" data-id="${x.t.id}"><span class="mt-badge" style="background:${c}">${dec}</span><span class="mt-name">${esc(x.t.title)}</span><span class="mt-sub">${esc((x.r.comment||x.r.cat||"").slice(0,24))}</span></div>`; }).join("")
+    : `<div class="mt-empty">새 피드백 없음</div>`;
+  const expHtml = pendingExp.length
+    ? `<div class="mt-row" data-act="goto" data-view="expenses"><span class="mt-badge" style="background:var(--brass)">${pendingExp.length}건</span><span class="mt-name">집행 대기 지출</span><span class="mt-sub">${won(pendingExpSum)}</span></div>`
+    : `<div class="mt-empty">집행 대기 지출 없음</div>`;
+  const leaveHtml = `<div class="mt-row" data-act="goto" data-view="gantt"><span class="mt-badge" style="background:${leaveColor}">연차</span><span class="mt-name">내 가용 연차</span><span class="mt-sub" style="color:${leaveColor};font-weight:700">${leaveTxt}</span></div>`;
+
+  return `<div class="card mytoday" style="margin-bottom:18px">
+    <div class="card-h"><h3>🌅 나의 오늘</h3><span class="hint" style="margin-left:auto">${new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"long"})}</span></div>
+    <div class="card-b mt-grid">
+      <div class="mt-col"><div class="mt-h">⏰ 마감 임박</div>${dueHtml}</div>
+      <div class="mt-col"><div class="mt-h">💬 받은 피드백</div>${fbHtml}</div>
+      <div class="mt-col"><div class="mt-h">🏖 연차 · 🧾 지출</div>${leaveHtml}${expHtml}</div>
+    </div>
+  </div>`;
 }
 
 /* ---- Task list & detail ---- */
@@ -1697,8 +1803,9 @@ function coReviewBlock(t, role){
       <div class="hint" style="margin-top:6px">공동검수자는 열람·의견만 남깁니다. 승인·반려는 팀장이 합니다.</div>
     </div>`;
   }
-  return `<div class="card" style="margin-bottom:18px"><div class="card-h"><h3>공동 검수</h3>${revs.length?`<span class="tag">${revs.filter(r=>r.done).length}/${revs.length} 완료</span>`:""}</div>
-    <div class="card-b">${list}${mgrBtn}${myBox}</div></div>`;
+  const allDone = revs.length && revs.every(r=>r.done);
+  return `<div class="card" style="margin-bottom:18px${allDone?';border-color:var(--ok)':''}"><div class="card-h"><h3>공동 검수</h3>${revs.length?`<span class="tag" ${allDone?'style="border-color:var(--ok);color:var(--ok);font-weight:700"':""}>${revs.filter(r=>r.done).length}/${revs.length} 완료</span>`:""}</div>
+    <div class="card-b">${allDone&&role==="manager"?`<div class="callout" style="margin-bottom:10px;border-color:var(--ok)">✓ 공동검수자 전원이 검수를 완료했습니다. 아래에서 최종 승인/반려를 진행하세요.</div>`:""}${list}${mgrBtn}${myBox}</div></div>`;
 }
 function reviewRow(r){
   const u=Store.user(r.reviewerId);
@@ -1982,7 +2089,17 @@ const Actions={
     const rev={id:Store.uid(),taskId:id,reviewerId:me().id,role:"co_reviewer",decision:null,checklist:null,cat:null,detail:null,comment:txt,createdAt:Date.now()};
     await Store.addReview(rev); Store.log(me().id,id,"review","공동검수 의견을 남겼습니다"); toast("의견을 등록했습니다"); render(); },
   async "coreview-done"(el){ const id=el.dataset.id; if(!Store.isReviewer(id,me().id)) return;
-    if(await Store.setReviewerDone(id,me().id,true)){ Store.log(me().id,id,"review","검수 완료로 표시했습니다"); await Notify.notifyCoreviewDone(Store.task(id), me().id); toast("검수 완료로 표시했습니다"); render(); } },
+    if(await Store.setReviewerDone(id,me().id,true)){ Store.log(me().id,id,"review","검수 완료로 표시했습니다"); await Notify.notifyCoreviewDone(Store.task(id), me().id);
+      // 전원 완료 감지 → 팀장에게 "전원 검수 완료, 최종 승인 대기" 자동 알림
+      const revs=Store.reviewersOf(id);
+      if(revs.length && revs.every(r=>r.done)){
+        const t=Store.task(id);
+        if(t){ Store.log(me().id,id,"review","공동검수자 전원이 검수를 완료했습니다"); await Notify.notifyAllReviewsDone(t); }
+        toast("검수 완료 — 공동검수자 전원 완료! 팀장 최종 승인 대기 상태입니다");
+      } else {
+        toast("검수 완료로 표시했습니다");
+      }
+      render(); } },
   "new-meeting"(){ openMeetingModal(); },
   "edit-meeting-title"(el){ openMeetingTitleModal(el.dataset.id); },
   "edit-meeting-time"(el){ openMeetingTimeModal(el.dataset.id); },
@@ -4206,8 +4323,9 @@ async function afterAuth(){
   Store.logAccess("login");   // 접속 로그 기록
   // 마감 점검: 로그인 직후 1회 + 30분마다 (팀장 세션에서만 실제 발송)
   Notify.deadlineCheck();
+  Notify.memberDeadlineCheck();   // 팀원 본인 마감 임박 토스트
   if(window.__dlTimer) clearInterval(window.__dlTimer);
-  window.__dlTimer=setInterval(()=>{ if(session.user) Notify.deadlineCheck(); }, 30*60*1000);
+  window.__dlTimer=setInterval(()=>{ if(session.user){ Notify.deadlineCheck(); Notify.memberDeadlineCheck(); } }, 30*60*1000);
   startRealtime();
 }
 // ===== Supabase Realtime: 업무 변경 시 새로고침 없이 화면/카운트 갱신 =====
