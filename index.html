@@ -668,6 +668,7 @@ let TASK_MEMBERS_OK=false;  // task_members 테이블 존재 시 true
 let TASK_REVIEWERS_OK=false; // task_reviewers 테이블 존재 시 true (공동검수자)
 let VAC_OK=false;           // vacations 테이블 존재 시 true (개인 휴가)
 let EXPENSE_OK=false;       // expenses 테이블 존재 시 true (지출결의서)
+let SPELL_OK=false;         // spell_dict 테이블 존재 시 true (팀 교정 사전)
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_ATT_OK=false;   // meetings.attendee_ids 컬럼 존재 시 true (참석자 계정)
 let MEETING_TIME_OK=false;  // meetings.mtime 컬럼 존재 시 true (회의 시간)
@@ -690,6 +691,8 @@ const Maps={
     to:v=>({id:v.id,asset_id:v.assetId,no:v.no,changes:v.changes,reason:v.reason,editor_id:v.editorId,created_at:iso(v.createdAt)})},
   review:{from:r=>({id:r.id,taskId:r.task_id,reviewerId:r.reviewer_id,role:r.role,decision:r.decision,checklist:r.checklist,cat:r.cat,detail:r.detail,comment:r.comment,createdAt:Date.parse(r.created_at)}),
     to:r=>({id:r.id,task_id:r.taskId,reviewer_id:r.reviewerId,role:r.role,decision:r.decision,checklist:r.checklist||null,cat:r.cat||null,detail:r.detail||null,comment:r.comment||null,created_at:iso(r.createdAt)})},
+  spellDict:{from:r=>({id:r.id,wrong:r.wrong||"",correct:r.correct||"",note:r.note||"",createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
+    to:d=>({id:d.id,wrong:d.wrong,correct:d.correct,note:d.note||null,created_by:d.createdBy||null,created_at:iso(d.createdAt)})},
   perf:{from:r=>({id:r.id,taskId:r.task_id,ctr:+r.ctr,cvr:+r.cvr,roas:+r.roas,revenue:+r.revenue,consults:+r.consults,reach:+r.reach,createdAt:Date.parse(r.created_at)}),
     to:p=>({id:p.id,task_id:p.taskId,ctr:p.ctr,cvr:p.cvr,roas:p.roas,revenue:p.revenue,consults:p.consults,reach:p.reach,created_at:iso(p.createdAt)})},
   retro:{from:r=>({id:r.id,taskId:r.task_id,good:r.good,bad:r.bad,next:r.next,aiGenerated:r.ai_generated,createdAt:Date.parse(r.created_at)}),
@@ -749,7 +752,7 @@ async function guardedUpdate(table, id, patch, applyLocal){
 const Store = (()=>{
   let db;
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(36).slice(2,8));
-  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],vacations:[],expenses:[],meetings:[],meetingComments:[]}; }
+  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],vacations:[],expenses:[],meetings:[],meetingComments:[],spellDict:[]}; }
   async function loadAll(){
     db=blank();
     const get=async(table,from)=>{ const {data,error}=await sb.from(table).select("*"); if(error)throw error; return (data||[]).map(from); };
@@ -781,6 +784,7 @@ const Store = (()=>{
     try{ db.taskReviewers=await get("task_reviewers",Maps.taskReviewer.from); TASK_REVIEWERS_OK=true; }catch(e){ db.taskReviewers=[]; TASK_REVIEWERS_OK=false; }
     try{ db.vacations=await get("vacations",Maps.vacation.from); VAC_OK=true; }catch(e){ db.vacations=[]; VAC_OK=false; }
     try{ db.expenses=await get("expenses",Maps.expense.from); EXPENSE_OK=true; }catch(e){ db.expenses=[]; EXPENSE_OK=false; }
+    try{ db.spellDict=await get("spell_dict",Maps.spellDict.from); SPELL_OK=true; }catch(e){ db.spellDict=[]; SPELL_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("attendee_ids").limit(1); MEETING_ATT_OK=!error; }catch(e){ MEETING_ATT_OK=false; } }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("mtime").limit(1); MEETING_TIME_OK=!error; }catch(e){ MEETING_TIME_OK=false; } }
@@ -887,6 +891,11 @@ const Store = (()=>{
     async addExpense(e){ const {error}=await sb.from("expenses").insert(Maps.expense.to(e)); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} db.expenses.push(e); return true; },
     async updateExpense(id,patch,apply){ const {error}=await sb.from("expenses").update(patch).eq("id",id); if(error){toast("수정 실패: "+error.message.slice(0,60));return false;} const e=db.expenses.find(x=>x.id===id); if(e&&apply) apply(e); return true; },
     async delExpense(id){ const {error}=await sb.from("expenses").delete().eq("id",id); if(error){toast("삭제 실패: "+error.message.slice(0,50));return false;} db.expenses=db.expenses.filter(e=>e.id!==id); return true; },
+    // ---- 팀 교정 사전 ----
+    spellDictAll:()=>db.spellDict.slice().sort((a,b)=>(a.wrong||"").localeCompare(b.wrong||"","ko")),
+    async addSpell(d){ const {error}=await sb.from("spell_dict").insert(Maps.spellDict.to(d)); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} db.spellDict.push(d); return true; },
+    async updateSpell(id,patch,apply){ const {error}=await sb.from("spell_dict").update(patch).eq("id",id); if(error){toast("수정 실패: "+error.message.slice(0,60));return false;} const d=db.spellDict.find(x=>x.id===id); if(d&&apply) apply(d); return true; },
+    async delSpell(id){ const {error}=await sb.from("spell_dict").delete().eq("id",id); if(error){toast("삭제 실패: "+error.message.slice(0,50));return false;} db.spellDict=db.spellDict.filter(d=>d.id!==id); return true; },
     addAsset:a=>optimisticInsert(db.assets,a,"assets",Maps.asset.to),
     addVersion:v=>optimisticInsert(db.versions,v,"versions",Maps.version.to),
     addReview:r=>optimisticInsert(db.reviews,r,"reviews",Maps.review.to),
@@ -1058,7 +1067,31 @@ const AiService=(()=>{
       directions: ["다음 회의에서 후속 액션의 진행 상황을 점검하세요.","결정되지 않은 안건은 담당자를 지정해 마감일을 정하면 좋습니다."],
     };
   }
-  return {checks,execReport,retro,meetingSummary,live};
+  // --- 3.5 정밀 오탈자·띄어쓰기 교정 (+ 팀 교정 사전 적용)
+  async function proofread(text){
+    const dict=(typeof Store!=="undefined"&&Store.spellDictAll)?Store.spellDictAll():[];
+    // 1) 팀 교정 사전 규칙 적용 (확실한 규칙 — AI와 무관하게 항상 검사)
+    const dictHits=[];
+    dict.forEach(d=>{ if(!d.wrong) return;
+      try{ const re=new RegExp(d.wrong.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"g");
+        const m=text.match(re); if(m&&m.length) dictHits.push({wrong:d.wrong,correct:d.correct,note:d.note||"팀 교정 사전",count:m.length}); }catch(e){}
+    });
+    // 2) AI 정밀 교정
+    let aiItems=[], corrected=text;
+    if(live()){
+      try{
+        const dictHint=dict.length?`\n[팀 교정 사전 — 아래 표기는 반드시 이렇게 통일]\n${dict.map(d=>`- "${d.wrong}" → "${d.correct}"${d.note?" ("+d.note+")":""}`).join("\n")}`:"";
+        const sys=`너는 한국어 교정 전문가다. 주어진 마케팅 문안의 (1) 오탈자, (2) 띄어쓰기 오류, (3) 맞춤법 오류만 정확히 교정한다. 의미·문체·어투는 절대 바꾸지 마라. 확실한 오류만 지적하고, 애매하면 지적하지 마라. 각 항목은 원문 표현(before)과 교정 표현(after), 유형(type: "오탈자"|"띄어쓰기"|"맞춤법"), 짧은 사유(reason)를 담는다. 전체 교정문(correctedText)도 제공한다. JSON만 출력:
+{"items":[{"before":"","after":"","type":"","reason":""}],"correctedText":""}${dictHint}`;
+        const usr=`[교정할 문안]\n${text}`;
+        const r=await call(sys,usr);
+        aiItems=Array.isArray(r.items)?r.items:[];
+        corrected=r.correctedText||text;
+      }catch(e){ console.error("[proofread]",e); throw e; }
+    }
+    return {dictHits, aiItems, corrected, aiUsed:live()};
+  }
+  return {checks,execReport,retro,meetingSummary,proofread,live};
 })();
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -2104,33 +2137,59 @@ const Actions={
     if(box) box.innerHTML=`<div class="callout" style="margin:0 0 4px;display:flex;align-items:center;gap:9px"><span class="bs-spin" style="border-color:rgba(0,0,0,.15);border-top-color:var(--primary)"></span> AI가 산출물 ${assets.length}건을 점검 중입니다…</div>`;
     const brand=Store.brand(t.brandId);
     const warnings=[];
+    const proofResults=[];   // 오탈자·띄어쓰기 교정 결과
     let done=0;
     for(const a of assets){
       try{
         const checks=await AiService.checks(a,t,brand);
         await Store.update("assets",a.id,{checks},()=>{a.checks=checks;});
         Object.keys(CH_LAB).forEach(k=>{ const c=checks&&checks[k]; if(c&&c.status==="warn") warnings.push({asset:a.note||ASSET_TYPES[a.type]||"산출물",label:CH_LAB[k],note:c.note||""}); });
+        // 오탈자·띄어쓰기 정밀 교정 (텍스트가 있는 산출물만)
+        const text=[a.note,a.body,a.keywords].filter(Boolean).join("\n").trim();
+        if(text){
+          try{
+            const pr=await AiService.proofread(text);
+            const totalIssues=(pr.dictHits?.length||0)+(pr.aiItems?.length||0);
+            if(totalIssues>0) proofResults.push({asset:a.note||ASSET_TYPES[a.type]||"산출물", pr});
+          }catch(e){ console.warn("교정 실패",e); }
+        }
       }catch(e){ console.error("precheck 실패",e); }
       done++;
-      if(box) box.querySelector(".callout").innerHTML=`<span class="bs-spin" style="border-color:rgba(0,0,0,.15);border-top-color:var(--primary)"></span> AI 점검 중… (${done}/${assets.length})`;
+      if(box&&box.querySelector(".callout")) box.querySelector(".callout").innerHTML=`<span class="bs-spin" style="border-color:rgba(0,0,0,.15);border-top-color:var(--primary)"></span> AI 점검 중… (${done}/${assets.length})`;
+    }
+    // 오탈자·띄어쓰기 교정 결과 HTML
+    let proofHtml="";
+    if(proofResults.length){
+      const blocks=proofResults.map(pr=>{
+        const dictRows=(pr.pr.dictHits||[]).map(h=>`<li style="margin:2px 0"><span style="color:var(--warn);text-decoration:line-through">${esc(h.wrong)}</span> → <b style="color:var(--ok)">${esc(h.correct)}</b> <span class="hint">· 팀 사전${h.note&&h.note!=="팀 교정 사전"?" ("+esc(h.note)+")":""} · ${h.count}회</span></li>`).join("");
+        const aiRows=(pr.pr.aiItems||[]).map(it=>`<li style="margin:2px 0"><span style="color:var(--warn);text-decoration:line-through">${esc(it.before)}</span> → <b style="color:var(--ok)">${esc(it.after)}</b> <span class="hint">· ${esc(it.type||"교정")}${it.reason?" · "+esc(it.reason):""}</span></li>`).join("");
+        return `<div style="margin-top:8px"><div style="font-weight:600;font-size:12.5px;margin-bottom:3px">📝 ${esc(pr.asset)}</div><ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.6">${dictRows}${aiRows}</ul></div>`;
+      }).join("");
+      proofHtml=`<div class="callout" style="margin:8px 0 4px;border-color:var(--brass)">
+        <div style="font-weight:700;margin-bottom:4px">✍️ 오탈자·띄어쓰기 교정 제안</div>${blocks}
+        <div class="hint" style="margin-top:7px">제안된 교정을 반영한 뒤 검토 요청하면 좋아요. (자동 반영은 아니며, 직접 수정해 주세요)</div>
+      </div>`;
     }
     // 결과 요약 배너
     if(box){
+      let head;
       if(!warnings.length){
-        box.innerHTML=`<div class="callout" style="margin:0 0 4px;border-color:var(--ok)">✅ AI 사전 점검 완료 — 모든 항목 이상 없음. 안심하고 검토 요청하셔도 좋아요.</div>`;
+        head=`<div class="callout" style="margin:0 0 4px;border-color:var(--ok)">✅ AI 사전 점검 완료 — 브랜드톤·CTA·법무·심의 이상 없음.${proofResults.length?" 아래 오탈자·띄어쓰기 교정 제안만 확인하세요.":" 안심하고 검토 요청하셔도 좋아요."}</div>`;
       }else{
         const items=warnings.map(w=>`<li style="margin:2px 0"><b>${esc(w.asset)}</b> · ${esc(w.label)}${w.note?` — ${esc(w.note)}`:""}</li>`).join("");
-        box.innerHTML=`<div class="callout" style="margin:0 0 4px;border-color:var(--warn)">
+        head=`<div class="callout" style="margin:0 0 4px;border-color:var(--warn)">
           <div style="font-weight:700;margin-bottom:6px">⚠ AI 사전 점검 — 확인 권장 ${warnings.length}건</div>
           <ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.6">${items}</ul>
           <div class="hint" style="margin-top:7px">검토 요청 전 위 항목을 확인하면 반려 가능성을 줄일 수 있어요. (경고는 참고용이며 강제는 아닙니다)</div>
         </div>`;
       }
+      box.innerHTML=head+proofHtml;
     }
     // 카드의 개별 체크 표시도 갱신되도록 목록만 다시 그림
     const listBox=document.getElementById("asset-list");
     if(listBox) listBox.innerHTML=Store.assetsOf(t.id).map(a=>assetCard(a)).join("");
-    toast(warnings.length?`AI 점검 완료 · 확인 권장 ${warnings.length}건`:"AI 점검 완료 · 이상 없음");
+    const proofCount=proofResults.reduce((s,p)=>s+(p.pr.dictHits?.length||0)+(p.pr.aiItems?.length||0),0);
+    toast(`AI 점검 완료 · 확인 권장 ${warnings.length}건${proofCount?` · 교정 제안 ${proofCount}건`:""}`);
   },
   async "bulk-download"(el){
     const t=Store.task(el.dataset.id); if(!t) return;
@@ -2225,6 +2284,9 @@ const Actions={
     if(await Store.update("meetings",m.id,{minutes:merged},()=>{m.minutes=merged;})){ m._ai=null; toast("회의록에 반영했습니다"); render(); } else toast("반영 실패"); },
   "ai-meeting-clear"(el){ const m=Store.meeting(el.dataset.id); if(m){ m._ai=null; render(); } },
   "content-add"(){ openContentModal(); },
+  "spell-add"(){ openSpellModal(); },
+  "spell-edit"(el){ const d=Store.spellDictAll().find(x=>x.id===el.dataset.id); if(d) openSpellModal(d); },
+  async "spell-del"(el){ const d=Store.spellDictAll().find(x=>x.id===el.dataset.id); if(!d) return; if(confirm(`"${d.wrong} → ${d.correct}" 단어를 삭제할까요?`)){ if(await Store.delSpell(el.dataset.id)){ toast("삭제했습니다"); render(); } } },
   "exp-add"(){ openExpenseModal(); },
   "exp-open"(el){ openExpenseView(el.dataset.id); },
   "exp-edit"(el){ const e=Store.expensesAll().find(x=>x.id===el.dataset.id); if(!e){ toast("문서를 찾을 수 없습니다"); return; } if(e.status!=="pending"){ toast("집행 완료 건은 수정할 수 없습니다"); return; } Modal.close(); openExpenseModal(e,"edit"); },
@@ -2865,6 +2927,48 @@ function bsEl(t,c){ const e=document.createElement(t); if(c) e.className=c; retu
 function bsq(s){ return document.querySelector(s); }
 function bsEscHtml(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function bsEscRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+/* ===== 팀 교정 사전 화면 ===== */
+function viewSpellDict(){
+  const role=me().role, canEdit=["manager","executive","member"].includes(role);
+  if(!SPELL_OK) return `${ph("교정 사전","자주 틀리는 표기를 등록해 AI 사전 점검에 반영합니다.")}
+    <div class="card"><div class="card-b">${C.empty("📗","기능 준비 필요","supabase_spell_dict.sql 을 Supabase에서 실행한 뒤 새로고침하세요.")}</div></div>`;
+  const list=Store.spellDictAll();
+  const right=canEdit?`<button class="btn btn-primary btn-sm" data-act="spell-add">＋ 단어 추가</button>`:"";
+  const rows=list.length?`<div class="card"><div class="card-b" style="overflow-x:auto">
+    <table class="ctab"><thead><tr><th>잘못된 표기</th><th>올바른 표기</th><th>설명</th>${canEdit?"<th></th>":""}</tr></thead><tbody>
+    ${list.map(d=>`<tr>
+      <td style="color:var(--warn);text-decoration:line-through">${esc(d.wrong)}</td>
+      <td style="font-weight:600;color:var(--ok)">${esc(d.correct)}</td>
+      <td style="color:var(--muted)">${esc(d.note||"-")}</td>
+      ${canEdit?`<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-act="spell-edit" data-id="${d.id}" style="padding:2px 8px;font-size:11px">수정</button><button class="btn btn-ghost btn-sm" data-act="spell-del" data-id="${d.id}" style="padding:2px 8px;font-size:11px;margin-left:4px">삭제</button></td>`:""}
+    </tr>`).join("")}
+    </tbody></table></div></div>`
+    :C.empty("📗","등록된 단어가 없습니다","‘＋ 단어 추가’로 자주 틀리는 표기를 등록하세요. (예: 런칭 → 론칭)");
+  return `${ph("교정 사전","자주 틀리는 표기를 등록하면 ‘AI 사전 점검’이 이 사전을 함께 확인합니다.",right)}
+    <div class="callout" style="margin-bottom:16px;font-size:12.5px">💡 여기 등록한 표기는 산출물의 <b>AI 사전 점검</b> 시 자동으로 함께 검사됩니다. 브랜드명 표기, 자주 하는 맞춤법 실수 등을 넣어두세요.</div>
+    ${rows}`;
+}
+function openSpellModal(edit){
+  const isEdit=!!edit;
+  Modal.open({title:isEdit?"교정 단어 수정":"교정 단어 추가",okLabel:isEdit?"수정":"추가",body:`
+    <label class="fld"><span class="lab">잘못된/피할 표기 <span class="hint">예: 런칭</span></span><input type="text" id="sp_wrong" value="${isEdit?esc(edit.wrong):""}" placeholder="예) 런칭"></label>
+    <label class="fld"><span class="lab">올바른 표기 <span class="hint">예: 론칭</span></span><input type="text" id="sp_correct" value="${isEdit?esc(edit.correct):""}" placeholder="예) 론칭"></label>
+    <label class="fld"><span class="lab">설명 <span class="hint">선택</span></span><input type="text" id="sp_note" value="${isEdit?esc(edit.note||""):""}" placeholder="예) 외래어 표기법"></label>`,
+    submit:async()=>{
+      const wrong=val("sp_wrong").trim(), correct=val("sp_correct").trim(), note=val("sp_note").trim();
+      if(!wrong||!correct){ toast("잘못된 표기와 올바른 표기를 모두 입력하세요"); return false; }
+      if(isEdit){
+        if(!(await Store.updateSpell(edit.id,{wrong,correct,note:note||null},d=>{d.wrong=wrong;d.correct=correct;d.note=note;}))) return false;
+        toast("수정했습니다");
+      }else{
+        const d={id:Store.uid(),wrong,correct,note,createdBy:me().id,createdAt:Date.now()};
+        if(!(await Store.addSpell(d))) return false;
+        toast("단어를 추가했습니다");
+      }
+      render();
+    }});
+}
 
 function viewBlogStudio(){
   return `
@@ -4282,6 +4386,7 @@ function navConfig(){
   base.push({view:"meetings",ic:"📋",label:"회의"});
   base.push({view:"generator",ic:"🎨",label:"생성기"});
   base.push({view:"blog",ic:"✍️",label:"블로그 원고"});
+  base.push({view:"spelldict",ic:"📗",label:"교정 사전"});
   base.push({view:"ads",ic:"📈",label:"광고 분석"});
   base.push({view:"content",ic:"📱",label:"콘텐츠 성과"});
   base.push({view:"expenses",ic:"🧾",label:"지출결의서"});
@@ -4328,6 +4433,7 @@ function render(){
   else if(v==="brand") html=viewBrands();
   else if(v==="generator") html=viewGenerator();
   else if(v==="blog") html=viewBlogStudio();
+  else if(v==="spelldict") html=viewSpellDict();
   else if(v==="ads") html=viewAds();
   else if(v==="content") html=viewContent();
   else if(v==="expenses") html=viewExpenses();
