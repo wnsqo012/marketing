@@ -2007,6 +2007,7 @@ const Actions={
   "content-add"(){ openContentModal(); },
   "exp-add"(){ openExpenseModal(); },
   "exp-open"(el){ openExpenseView(el.dataset.id); },
+  "exp-edit"(el){ const e=Store.expensesAll().find(x=>x.id===el.dataset.id); if(!e){ toast("문서를 찾을 수 없습니다"); return; } if(e.status!=="pending"){ toast("집행 완료 건은 수정할 수 없습니다"); return; } Modal.close(); openExpenseModal(e); },
   "exp-item-add"(){ expItems.push({desc:"",amount:0,note:""}); rerenderExpTable(); },
   "exp-item-del"(el){ const i=+el.dataset.i; if(expItems.length<=1){ expItems=[{desc:"",amount:0,note:""}]; } else { expItems.splice(i,1); } rerenderExpTable(); },
   "exp-att-del"(el){ const k=el.dataset.k, idx=+el.dataset.idx; if(expAtt[k]) expAtt[k].splice(idx,1); const box=document.getElementById("exp_att_box"); if(box){ box.innerHTML=expAttHtml(true); bindExpAtt(); } },
@@ -3401,30 +3402,46 @@ function bindExpAtt(){
     const box=document.getElementById("exp_att_box"); if(box){ box.innerHTML=expAttHtml(true); bindExpAtt(); } toast("업로드 완료"); }; });
 }
 function rerenderExpTable(){ const box=document.getElementById("exp_table"); if(box){ box.innerHTML=expenseTableHTML("edit"); bindExpTable(); } }
-function openExpenseModal(){
+function openExpenseModal(edit){
   if(!EXPENSE_OK){ toast("supabase_expenses.sql 을 먼저 실행하세요"); return; }
-  expItems=[{desc:"",amount:0,note:""}];
-  expAtt={quote:[],tax:[],bizreg:[],bankbook:[]};
-  Modal.open({title:"지출결의서 작성",wide:true,okLabel:"저장",body:`
+  const isEdit = !!edit;
+  if(isEdit && edit.status!=="pending"){ toast("집행 완료 건은 수정할 수 없습니다"); return; }
+  // 수정이면 기존 값으로, 작성이면 빈 값으로 편집 상태 초기화
+  expItems = isEdit ? (edit.items&&edit.items.length?edit.items.map(it=>({desc:it.desc||"",amount:+it.amount||0,note:it.note||""})):[{desc:"",amount:0,note:""}]) : [{desc:"",amount:0,note:""}];
+  expAtt = {quote:[],tax:[],bizreg:[],bankbook:[]};
+  if(isEdit){ // 기존 첨부 URL을 편집 상태로 복원
+    EXP_ATT_DEFS.forEach(([k])=>{ const arr=(edit.attachments&&edit.attachments[k])||[]; expAtt[k]=arr.map(u=>({url:u,path:"",fileName:""})); });
+  }
+  Modal.open({title:isEdit?"지출결의서 수정":"지출결의서 작성",wide:true,okLabel:isEdit?"수정 저장":"저장",body:`
     <div class="xls-wrap">
-      <div class="xls-appr"><div class="abox"><div class="h">기안자</div><div class="b" id="exp_appr_drafter">${esc(me().name)}</div></div><div class="abox"><div class="h">검 토</div><div class="b"></div></div><div class="abox"><div class="h">결 재</div><div class="b"></div></div></div>
+      <div class="xls-appr"><div class="abox"><div class="h">기안자</div><div class="b" id="exp_appr_drafter">${esc(isEdit?(edit.drafter||""):me().name)}</div></div><div class="abox"><div class="h">검 토</div><div class="b"></div></div><div class="abox"><div class="h">결 재</div><div class="b"></div></div></div>
       <div class="xls-title">지 출 결 의 서</div>
       <div class="row" style="justify-content:flex-end;margin-bottom:6px"><button class="btn btn-ghost btn-sm" data-act="exp-item-add">＋ 적요 행 추가</button></div>
-      <div id="exp_table">${expenseTableHTML("edit")}</div>
+      <div id="exp_table">${expenseTableHTML("edit", isEdit?edit:null)}</div>
     </div>
     <div class="lab" style="margin:14px 0 6px">필수 첨부서류 <span class="hint">견적서·세금계산서·사업자등록증·통장사본 — 이미지 여러 장</span></div>
     <div id="exp_att_box">${expAttHtml(true)}</div>`,
     submit:async()=>{
       const items=expItems.filter(it=>(it.desc||"").trim()||(+it.amount||0));
       if(!items.length){ toast("적요를 1건 이상 입력하세요"); return false; }
-      const e={id:Store.uid(),docDate:val("exp_date"),drafter:val("exp_drafter").trim()||me().name,drafterId:me().id,
+      const attachments={quote:(expAtt.quote||[]).map(a=>a.url),tax:(expAtt.tax||[]).map(a=>a.url),bizreg:(expAtt.bizreg||[]).map(a=>a.url),bankbook:(expAtt.bankbook||[]).map(a=>a.url)};
+      const fields={docDate:val("exp_date"),drafter:val("exp_drafter").trim()||me().name,
         dept:val("exp_dept").trim()||"마케팅팀",reason:val("exp_reason").trim(),items,memo:val("exp_memo").trim(),
         evTax:document.getElementById("exp_tax").checked,evCash:document.getElementById("exp_cash").checked,evEtc:val("exp_etc").trim(),
         vendor:val("exp_vendor").trim(),bank:val("exp_bank").trim(),account:val("exp_account").trim(),
-        attachments:{quote:(expAtt.quote||[]).map(a=>a.url),tax:(expAtt.tax||[]).map(a=>a.url),bizreg:(expAtt.bizreg||[]).map(a=>a.url),bankbook:(expAtt.bankbook||[]).map(a=>a.url)},
-        total:expTotal(items),status:"pending",paidAt:null,createdBy:me().id,createdAt:Date.now()};
-      if(!(await Store.addExpense(e))) return false;
-      toast("지출결의서가 저장되었습니다"); session.route={view:"expenses"}; render();
+        attachments,total:expTotal(items)};
+      if(isEdit){
+        if(edit.status!=="pending"){ toast("집행 완료 건은 수정할 수 없습니다"); return false; }
+        const patch=Maps.expense.to({...edit,...fields});
+        // 상태·집행일·작성자·생성시각은 그대로 유지 (수정 대상 아님)
+        delete patch.id; patch.status=edit.status; patch.paid_at=edit.paidAt?iso(edit.paidAt):null;
+        if(!(await Store.updateExpense(edit.id,patch,e=>{ Object.assign(e,fields); }))) return false;
+        toast("지출결의서를 수정했습니다"); session.route={view:"expenses"}; render();
+      }else{
+        const e={id:Store.uid(),...fields,drafterId:me().id,status:"pending",paidAt:null,createdBy:me().id,createdAt:Date.now()};
+        if(!(await Store.addExpense(e))) return false;
+        toast("지출결의서가 저장되었습니다"); session.route={view:"expenses"}; render();
+      }
     }});
   bindExpTable(); bindExpAtt();
 }
@@ -3516,12 +3533,13 @@ function openExpenseView(id){
     <div class="lab" style="margin:14px 0 6px">첨부서류</div>${attView}
     <div class="row" style="gap:8px;margin-top:14px;border-top:1px solid var(--line);padding-top:12px;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm" data-act="exp-xlsx" data-id="${e.id}">⬇ 엑셀 내보내기</button>
+      ${canWrite&&e.status==="pending"?`<button class="btn btn-sm" data-act="exp-edit" data-id="${e.id}">✎ 수정</button>`:""}
       ${canWrite&&e.status==="pending"?`<button class="btn btn-ok btn-sm" data-act="exp-mark-paid" data-id="${e.id}">✓ 집행 완료로 표시</button>`:""}
       ${canWrite&&e.status==="paid"?`<button class="btn btn-ghost btn-sm" data-act="exp-mark-pending" data-id="${e.id}">집행 대기로 되돌리기</button><span class="hint" style="align-self:center">집행일 ${e.paidAt?fmtDate(e.paidAt):"-"}</span>`:""}
       <span style="flex:1"></span>
       ${(e.status==="pending"&&canWrite)||(e.status==="paid"&&(role==="manager"||role==="executive"))?`<button class="btn btn-warn btn-sm" data-act="exp-del" data-id="${e.id}">삭제</button>`:""}
     </div>
-    <div class="hint" style="margin-top:8px">엑셀 내보내기는 원본 양식과 동일합니다. ${e.status==="paid"&&role==="member"?"집행 완료 건은 팀장만 삭제할 수 있습니다.":""}</div>`});
+    <div class="hint" style="margin-top:8px">엑셀 내보내기는 원본 양식과 동일합니다. ${e.status==="pending"?"집행 대기 상태에서는 금액·내용을 수정할 수 있습니다. ":""}${e.status==="paid"&&role==="member"?"집행 완료 건은 팀장만 삭제할 수 있습니다.":""}</div>`});
 }
 function viewContent(){
   const role=me().role;
