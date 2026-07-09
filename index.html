@@ -1700,25 +1700,38 @@ function workloadCard(tasks,title){
   </div></div>`;
 }
 function ph(title,desc,right=""){return `<div class="ph"><div><div class="eb">marketing ops</div><h2>${title}</h2><p>${desc}</p></div>${right?`<div class="right">${right}</div>`:""}</div>`;}
-function taskList(list){
+function taskList(list, groupUid){
   return `<div class="tlist">${list.map(t=>{
     const b=Store.brand(t.brandId),o=Store.user(t.ownerId),over=t.due<Date.now()&&STATUS[t.status].idx<STATUS.approved.idx;
+    // 담당자별 그룹에서 이 그룹 주인이 소유자가 아니면(=공동작업자로 포함된 것) 표시
+    const coBadge = (groupUid && groupUid!==t.ownerId && Store.membersOf(t.id).some(m=>m.userId===groupUid))
+      ? `<span class="tag" style="border-color:var(--brass);color:var(--brass)">공동</span>` : "";
     return `<div class="titem" data-act="open-task" data-id="${t.id}">
       ${C.avatar(o)}
       <div class="main"><p class="tt">${esc(t.title)}</p>
-        <div class="mt">${C.prio(t.priority)}<span class="tag">${esc(b?b.name:'-')}</span><span>${esc(t.purpose)}</span><span class="due ${over?'over':''}">~${fmtDay(t.due)}</span>${C.dday(t)}</div></div>
+        <div class="mt">${coBadge}${C.prio(t.priority)}<span class="tag">${esc(b?b.name:'-')}</span><span>${esc(t.purpose)}</span><span class="due ${over?'over':''}">~${fmtDay(t.due)}</span>${C.dday(t)}</div></div>
       ${C.badge(t.status)}</div>`;
   }).join("")}</div>`;
 }
 // 브랜드별로 묶어서 표시 (업무 메뉴 전용) — 그룹 접기/펴기 지원
 function taskListByBrand(list){ return taskListGrouped(list,"brand"); }
 // 그룹 기준(mode: "brand" | "owner")에 따라 묶어서 표시
+// owner 모드: 소유자 + 공동작업자 각각의 그룹에 업무를 중복 표시 (함께 하는 업무이므로)
 function taskListGrouped(list, mode){
   mode = mode||"brand";
   const groups=new Map();
   list.forEach(t=>{
-    const key = mode==="owner" ? (t.ownerId||"__none__") : (t.brandId||"__none__");
-    if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(t);
+    if(mode==="owner"){
+      // 소유자 + 공동작업자 전원의 그룹에 넣는다 (중복 허용)
+      const ids=new Set();
+      if(t.ownerId) ids.add(t.ownerId);
+      Store.membersOf(t.id).forEach(m=>{ if(m.userId) ids.add(m.userId); });
+      if(!ids.size) ids.add("__none__");
+      ids.forEach(uid=>{ if(!groups.has(uid)) groups.set(uid,[]); groups.get(uid).push(t); });
+    }else{
+      const key=t.brandId||"__none__";
+      if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(t);
+    }
   });
   const nameOf = key => {
     if(key==="__none__") return mode==="owner" ? "담당자 미지정" : "브랜드 미지정";
@@ -1741,7 +1754,7 @@ function taskListGrouped(list, mode){
         <span class="tw">${collapsed?"▸":"▾"}</span>
         ${head}<span class="cnt">${items.length}건</span>
       </div>
-      <div class="tgroup-body"${collapsed?' style="display:none"':""}>${taskList(items)}</div>
+      <div class="tgroup-body"${collapsed?' style="display:none"':""}>${taskList(items, mode==="owner"?key:null)}</div>
     </div>`;
   }).join("");
 }
