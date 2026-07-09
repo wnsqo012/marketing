@@ -1509,7 +1509,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false},collapsedBrands:{},taskGroupBy:"brand",adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false,dateFrom:"",dateTo:""},collapsedBrands:{},taskGroupBy:"brand",adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -1524,6 +1524,9 @@ function visibleTasks(){ // 업무 메뉴 가시 범위 (간트는 별도)
 function filtered(list){
   const f=session.filters;
   const q=(f.q||"").trim().toLowerCase();
+  // 조회 기간(선택) — 업무의 시작~마감 구간이 이 기간과 겹치면 포함
+  const fromTs=f.dateFrom?Date.parse(f.dateFrom+"T00:00:00"):null;
+  const toTs=f.dateTo?Date.parse(f.dateTo+"T23:59:59"):null;
   return list.filter(t=>{
     if(q){ const bn=(Store.brand(t.brandId)?.name||"").toLowerCase(); const ti=(t.title||"").toLowerCase();
       if(!(ti.includes(q)||bn.includes(q))) return false; }
@@ -1531,6 +1534,12 @@ function filtered(list){
     if(f.hideExecuted && t.status==="executed") return false;
     if(f.brand && t.brandId!==f.brand) return false;
     if(f.prio && t.priority!==f.prio) return false;
+    // 기간 필터: 업무 구간 [tStart, tEnd] 와 조회 구간 [fromTs, toTs] 의 겹침 판정
+    if(fromTs||toTs){
+      const tStart=t.start||t.due, tEnd=t.due||t.start;
+      if(toTs && tStart>toTs) return false;    // 업무 시작이 조회 끝보다 뒤 → 제외
+      if(fromTs && tEnd<fromTs) return false;  // 업무 마감이 조회 시작보다 앞 → 제외
+    }
     return true;
   }).sort((a,b)=>a.due-b.due);
 }
@@ -1753,13 +1762,33 @@ function viewTasks(){
     <select id="f_status"><option value="">상태 전체</option>${STATUS_FLOW.map(s=>s.key==="producing"?`<option value="producing" ${session.filters.status==="producing"?"selected":""}>제작중</option><option value="revision" ${session.filters.status==="revision"?"selected":""}>수정 요청</option>`:`<option value="${s.key}" ${session.filters.status===s.key?"selected":""}>${s.label}</option>`).join("")}</select>
     <select id="f_brand"><option value="">브랜드 전체</option>${brands.map(b=>`<option value="${b.id}" ${session.filters.brand===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select>
     <select id="f_prio"><option value="">우선순위 전체</option>${PRIORITIES.map(p=>`<option value="${p.k}" ${session.filters.prio===p.k?"selected":""}>${p.l}</option>`).join("")}</select>
+    <span class="date-range" style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-soft)">
+      <span style="white-space:nowrap">📅 기간</span>
+      <input type="date" id="f_from" value="${esc(session.filters.dateFrom||"")}" style="padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--ink)">
+      <span>~</span>
+      <input type="date" id="f_to" value="${esc(session.filters.dateTo||"")}" style="padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--ink)">
+    </span>
     <label class="chip" style="display:inline-flex;align-items:center"><input type="checkbox" id="f_exec" ${session.filters.hideExecuted?"checked":""} style="position:static;opacity:1;width:auto;margin-right:7px"><span style="border:0;padding:0;color:var(--ink-soft);font-weight:500">집행완료 제외</span></label>
     ${groupToggle}
     <button class="btn btn-ghost btn-sm" data-act="clear-filter">초기화</button>
     <button class="btn btn-ghost btn-sm" data-act="collapse-all-brands">전체 접기</button>
     <button class="btn btn-ghost btn-sm" data-act="expand-all-brands">전체 펴기</button>
   </div>
-  <div class="card"><div class="card-b">${list.length?taskListGrouped(list,gmode):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.")}</div></div>`;
+  <div class="card"><div class="card-b">${taskRangeNote(list)}${list.length?taskListGrouped(list,gmode):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.")}</div></div>`;
+}
+// 조회 기간이 지정됐을 때 목록 위에 표시할 안내 배너
+function taskRangeNote(list){
+  const f=session.filters;
+  if(!f.dateFrom && !f.dateTo) return "";
+  const fmt=s=>{ if(!s) return ""; const [y,m,d]=s.split("-"); return `${y}.${m}.${d}`; };
+  let period;
+  if(f.dateFrom && f.dateTo) period=`${fmt(f.dateFrom)} ~ ${fmt(f.dateTo)}`;
+  else if(f.dateFrom) period=`${fmt(f.dateFrom)} 이후`;
+  else period=`${fmt(f.dateTo)} 이전`;
+  return `<div class="callout" style="margin:0 0 12px;font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span>📅 <b>${period}</b> 기간에 걸치는 업무 <b>${list.length}건</b></span>
+    <button class="btn btn-ghost btn-sm" data-act="clear-date" style="padding:2px 10px;font-size:11px">기간 해제</button>
+  </div>`;
 }
 
 function viewTask(id){
@@ -2032,7 +2061,8 @@ const Actions={
   "cal-today"(){ const n=new Date(); session.calMonth=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; render(); },
   "g-range"(el){ const g=el.dataset.gt==="m"?session.mgantt:session.gantt; g.range=el.dataset.range; g.anchor=null; render(); },
   "g-nav"(el){ ganttShift(+el.dataset.dir, el.dataset.gt==="m"?session.mgantt:session.gantt); render(); },
-  "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:"",hideExecuted:false}; render(); },
+  "clear-filter"(){ session.filters={q:"",status:"",brand:"",prio:"",hideExecuted:false,dateFrom:"",dateTo:""}; render(); },
+  "clear-date"(){ session.filters.dateFrom=""; session.filters.dateTo=""; render(); },
   "toggle-brand"(el){ const key=el.dataset.brand; session.collapsedBrands[key]=!session.collapsedBrands[key]; updateTaskListOnly(); },
   "task-groupby"(el){ session.taskGroupBy=el.dataset.mode||"brand"; render(); },
   "collapse-all-brands"(){ const list=filtered(visibleTasks()); const canOwner=me().role==="manager"||me().role==="executive"; const mode=canOwner?(session.taskGroupBy||"brand"):"brand"; const keys=new Set(list.map(t=>mode+":"+((mode==="owner"?t.ownerId:t.brandId)||"__none__"))); keys.forEach(k=>{ session.collapsedBrands[k]=true; }); updateTaskListOnly(); },
@@ -4454,6 +4484,8 @@ function render(){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
     ["status","brand","prio"].forEach(k=>{const el=document.getElementById("f_"+k);if(el)el.onchange=()=>{session.filters[k]=el.value;render();};});
     const ex=document.getElementById("f_exec"); if(ex) ex.onchange=()=>{ session.filters.hideExecuted=ex.checked; updateTaskListOnly(); };
+    const fromEl=document.getElementById("f_from"); if(fromEl) fromEl.onchange=()=>{ session.filters.dateFrom=fromEl.value; updateTaskListOnly(); };
+    const toEl=document.getElementById("f_to"); if(toEl) toEl.onchange=()=>{ session.filters.dateTo=toEl.value; updateTaskListOnly(); };
   }
   // execReport 인라인 편집 바인딩
   document.querySelectorAll('[data-bind=execReport]').forEach(ta=>{
@@ -4466,7 +4498,7 @@ function updateTaskListOnly(){ // 검색 시 전체 리렌더 대신 목록만 (
   const list=filtered(visibleTasks());
   const canGroupOwner = me().role==="manager"||me().role==="executive";
   const gmode = canGroupOwner ? (session.taskGroupBy||"brand") : "brand";
-  host.innerHTML=list.length?taskListGrouped(list,gmode):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요.");
+  host.innerHTML=taskRangeNote(list)+(list.length?taskListGrouped(list,gmode):C.empty("🔍","해당하는 업무가 없습니다","검색·필터 조건을 바꿔보세요."));
 }
 
 /* =====================================================================
@@ -4672,7 +4704,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","toggle-brand","task-groupby","collapse-all-brands","expand-all-brands","zoom","zoom-cardnews","doc-view","download-asset","bulk-download","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","clear-date","toggle-brand","task-groupby","collapse-all-brands","expand-all-brands","zoom","zoom-cardnews","doc-view","download-asset","bulk-download","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
