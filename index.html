@@ -440,6 +440,52 @@
     .g-head .lbl,.g-row .lbl{flex-basis:104px}
     .lb-nav{width:40px;height:40px;font-size:22px}
   }
+  /* ===== 모바일 최적화 보강 (전 기능 공통) ===== */
+  @media(max-width:760px){
+    /* split(2단) → 세로 1열 */
+    .split{grid-template-columns:1fr!important;gap:14px}
+    /* 가로로 넓은 표는 스크롤 컨테이너로 감싸 넘침 방지 */
+    .ctab,.statgrid{min-width:520px}
+    .card-b{-webkit-overflow-scrolling:touch}
+    /* 업무 리스트 아이템: 상태 뱃지가 줄바꿈되지 않게, 메타는 접히게 */
+    .titem .mt{gap:6px}
+    .titem .mt .tag{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    /* 나의 오늘 카드: 이미 세로 전환됨(820px), 항목 여백만 정리 */
+    .mytoday .mt-sub{max-width:52%}
+    /* 기간 조회 날짜 입력: 한 줄로 꽉 차게 */
+    .date-range{flex-wrap:wrap;width:100%}
+    .date-range input[type=date]{flex:1;min-width:0}
+    /* 그룹 헤더(브랜드·담당자별): 터치 영역 확보 */
+    .tgroup-h{padding:9px 4px 9px 0}
+    /* 전체 검색 오버레이: 화면 상단에 붙이고 폭 확보 */
+    .gs-overlay{padding:12px 10px}
+    .gs-box{max-height:calc(100vh - 40px)}
+    /* 교정 사전 등 일반 표: 셀 여백 축소 */
+    .ctab th,.ctab td{padding:8px 8px;font-size:12.5px}
+    /* 알림 토스트: 화면 좌우 여백에 맞춤(이미 640px에서 처리, 재확인) */
+    #ntoasts .nt-clear{align-self:stretch;text-align:center}
+    /* 캘린더 범례 줄바꿈 */
+    .cal-legend{flex-wrap:wrap;gap:6px 10px}
+    /* 블로그 스튜디오: 결과 카드 여백 */
+    .bs-results{padding:16px 14px}
+    .bs-panel{padding:16px 14px}
+    /* 모달 하단 버튼 터치 영역 */
+    .modal-f .btn{padding:12px 18px}
+    /* 지출결의서/기타 넓은 양식은 가로 스크롤 유지(축소 시 깨짐 방지) */
+    .xls-wrap{-webkit-overflow-scrolling:touch}
+  }
+  @media(max-width:430px){
+    /* 아주 좁은 화면: 업무 리스트 메타에서 목적 텍스트 숨겨 핵심만 */
+    .titem .mt span:nth-child(3){display:none}
+    /* 그룹 헤더 카운트/이름 크기 축소 */
+    .tgroup-h .bn{font-size:14px}
+    /* 검색 결과 항목 부가정보 축소 */
+    .gs-item .gs-s{font-size:11px}
+    /* 나의 오늘: 부가정보 폭 더 확보 */
+    .mytoday .mt-name{font-size:12.5px}
+    /* 토스트 카드 여백 */
+    .ntoast{padding:11px 12px}
+  }
   /* ===== 블로그 원고 스튜디오 ===== */
   .bs-wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
   @media(max-width:900px){ .bs-wrap{grid-template-columns:1fr} }
@@ -524,6 +570,47 @@
   .gs-item mark{background:rgba(60,110,220,.2);color:inherit;padding:0 1px;border-radius:2px}
   .gs-empty{padding:32px 16px;text-align:center;color:var(--muted);font-size:13px}
   .gs-foot{padding:9px 16px;border-top:1px solid var(--line);background:var(--surface-2)}
+  /* ===== 기획안 문서 ===== */
+  .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .doc-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:8px;min-height:130px}
+  .doc-card:hover{border-color:var(--line-strong);box-shadow:var(--shadow)}
+  .doc-card-t{font-family:var(--fd);font-weight:600;font-size:15px;color:var(--ink);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .doc-card-p{font-size:12.5px;color:var(--muted);line-height:1.55;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .doc-card-m{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .doc-card-meta{font-size:11px;color:var(--faint);margin-left:auto}
+  .doc-tag{font-size:10.5px;color:var(--primary);background:var(--surface-2);border-radius:5px;padding:1px 6px}
+  .doc-editor-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .doc-savestate{font-size:12px;color:var(--muted)}
+  .doc-editor-card .card-b{padding:22px 26px}
+  @media(max-width:640px){ .doc-editor-card .card-b{padding:16px 14px} }
+  .doc-title-in{width:100%;border:0;outline:none;background:transparent;font-family:var(--fd);font-weight:700;font-size:26px;color:var(--ink);padding:0 0 10px}
+  .doc-title-in::placeholder{color:var(--faint)}
+  .doc-meta-row{display:flex;gap:14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:14px}
+  .doc-meta-row label{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
+  .doc-meta-row select,.doc-meta-row input{font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font-family:inherit}
+  .doc-toolbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:3px;padding:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
+  .doc-tb-btn{border:0;background:transparent;color:var(--ink-soft);font-size:13px;padding:6px 9px;border-radius:7px;cursor:pointer;line-height:1;min-height:32px}
+  .doc-tb-btn:hover{background:var(--surface);color:var(--ink)}
+  .doc-tb-sep{width:1px;background:var(--line);margin:2px 4px}
+  .doc-body{min-height:400px;outline:none;font-size:15px;line-height:1.75;color:var(--ink)}
+  .doc-body:focus{outline:none}
+  .doc-body h1{font-size:24px;font-weight:700;margin:18px 0 8px;font-family:var(--fd)}
+  .doc-body h2{font-size:20px;font-weight:700;margin:16px 0 7px;font-family:var(--fd)}
+  .doc-body h3{font-size:17px;font-weight:600;margin:14px 0 6px}
+  .doc-body p{margin:8px 0}
+  .doc-body ul,.doc-body ol{margin:8px 0;padding-left:26px}
+  .doc-body li{margin:3px 0}
+  .doc-body blockquote{border-left:3px solid var(--primary);margin:12px 0;padding:4px 0 4px 16px;color:var(--ink-soft);background:var(--surface-2);border-radius:0 8px 8px 0}
+  .doc-body hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+  .doc-body a{color:var(--primary);text-decoration:underline}
+  .doc-body img{max-width:100%;border-radius:8px}
+  .doc-table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+  .doc-table th,.doc-table td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+  .doc-table th{background:var(--surface-2);font-weight:600}
+  .doc-checklist{list-style:none;padding-left:4px}
+  .doc-checklist li{display:flex;align-items:flex-start;gap:7px}
+  .doc-checklist input[type=checkbox]{margin-top:4px}
+  .doc-foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -669,6 +756,7 @@ let TASK_REVIEWERS_OK=false; // task_reviewers 테이블 존재 시 true (공동
 let VAC_OK=false;           // vacations 테이블 존재 시 true (개인 휴가)
 let EXPENSE_OK=false;       // expenses 테이블 존재 시 true (지출결의서)
 let SPELL_OK=false;         // spell_dict 테이블 존재 시 true (팀 교정 사전)
+let DOCS_OK=false;          // docs 테이블 존재 시 true (기획안 문서)
 let MEETINGS_OK=false;      // meetings 테이블 존재 시 true
 let MEETING_ATT_OK=false;   // meetings.attendee_ids 컬럼 존재 시 true (참석자 계정)
 let MEETING_TIME_OK=false;  // meetings.mtime 컬럼 존재 시 true (회의 시간)
@@ -693,6 +781,8 @@ const Maps={
     to:r=>({id:r.id,task_id:r.taskId,reviewer_id:r.reviewerId,role:r.role,decision:r.decision,checklist:r.checklist||null,cat:r.cat||null,detail:r.detail||null,comment:r.comment||null,created_at:iso(r.createdAt)})},
   spellDict:{from:r=>({id:r.id,wrong:r.wrong||"",correct:r.correct||"",note:r.note||"",createdBy:r.created_by,createdAt:Date.parse(r.created_at)}),
     to:d=>({id:d.id,wrong:d.wrong,correct:d.correct,note:d.note||null,created_by:d.createdBy||null,created_at:iso(d.createdAt)})},
+  doc:{from:r=>({id:r.id,title:r.title||"제목 없는 문서",body:r.body||"",brandId:r.brand_id||null,taskId:r.task_id||null,tags:r.tags||"",authorId:r.author_id,updatedBy:r.updated_by,createdAt:Date.parse(r.created_at),updatedAt:Date.parse(r.updated_at)}),
+    to:d=>({id:d.id,title:d.title||"제목 없는 문서",body:d.body||"",brand_id:d.brandId||null,task_id:d.taskId||null,tags:d.tags||null,author_id:d.authorId||null,updated_by:d.updatedBy||null,created_at:iso(d.createdAt),updated_at:iso(d.updatedAt||Date.now())})},
   perf:{from:r=>({id:r.id,taskId:r.task_id,ctr:+r.ctr,cvr:+r.cvr,roas:+r.roas,revenue:+r.revenue,consults:+r.consults,reach:+r.reach,createdAt:Date.parse(r.created_at)}),
     to:p=>({id:p.id,task_id:p.taskId,ctr:p.ctr,cvr:p.cvr,roas:p.roas,revenue:p.revenue,consults:p.consults,reach:p.reach,created_at:iso(p.createdAt)})},
   retro:{from:r=>({id:r.id,taskId:r.task_id,good:r.good,bad:r.bad,next:r.next,aiGenerated:r.ai_generated,createdAt:Date.parse(r.created_at)}),
@@ -752,7 +842,7 @@ async function guardedUpdate(table, id, patch, applyLocal){
 const Store = (()=>{
   let db;
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(36).slice(2,8));
-  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],vacations:[],expenses:[],meetings:[],meetingComments:[],spellDict:[]}; }
+  function blank(){ return {brands:[],users:[],campaigns:[],tasks:[],assets:[],versions:[],reviews:[],performance:[],retros:[],feedbackLib:[],activity:[],notifs:[],posts:[],comments:[],adMetrics:[],contentMetrics:[],accessLogs:[],taskMembers:[],taskReviewers:[],vacations:[],expenses:[],meetings:[],meetingComments:[],spellDict:[],docs:[]}; }
   async function loadAll(){
     db=blank();
     const get=async(table,from)=>{ const {data,error}=await sb.from(table).select("*"); if(error)throw error; return (data||[]).map(from); };
@@ -785,6 +875,7 @@ const Store = (()=>{
     try{ db.vacations=await get("vacations",Maps.vacation.from); VAC_OK=true; }catch(e){ db.vacations=[]; VAC_OK=false; }
     try{ db.expenses=await get("expenses",Maps.expense.from); EXPENSE_OK=true; }catch(e){ db.expenses=[]; EXPENSE_OK=false; }
     try{ db.spellDict=await get("spell_dict",Maps.spellDict.from); SPELL_OK=true; }catch(e){ db.spellDict=[]; SPELL_OK=false; }
+    try{ db.docs=await get("docs",Maps.doc.from); DOCS_OK=true; }catch(e){ db.docs=[]; DOCS_OK=false; }
     try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("attendee_ids").limit(1); MEETING_ATT_OK=!error; }catch(e){ MEETING_ATT_OK=false; } }
     if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("mtime").limit(1); MEETING_TIME_OK=!error; }catch(e){ MEETING_TIME_OK=false; } }
@@ -896,6 +987,13 @@ const Store = (()=>{
     async addSpell(d){ const {error}=await sb.from("spell_dict").insert(Maps.spellDict.to(d)); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} db.spellDict.push(d); return true; },
     async updateSpell(id,patch,apply){ const {error}=await sb.from("spell_dict").update(patch).eq("id",id); if(error){toast("수정 실패: "+error.message.slice(0,60));return false;} const d=db.spellDict.find(x=>x.id===id); if(d&&apply) apply(d); return true; },
     async delSpell(id){ const {error}=await sb.from("spell_dict").delete().eq("id",id); if(error){toast("삭제 실패: "+error.message.slice(0,50));return false;} db.spellDict=db.spellDict.filter(d=>d.id!==id); return true; },
+    // ---- 기획안 문서 ----
+    docsAll:()=>db.docs.slice().sort((a,b)=>b.updatedAt-a.updatedAt),
+    doc:id=>db.docs.find(d=>d.id===id),
+    docsOfTask:tid=>db.docs.filter(d=>d.taskId===tid).sort((a,b)=>b.updatedAt-a.updatedAt),
+    async addDoc(d){ const {error}=await sb.from("docs").insert(Maps.doc.to(d)); if(error){toast("문서 생성 실패: "+error.message.slice(0,60));return false;} db.docs.push(d); return true; },
+    async updateDoc(id,patch,apply){ patch.updated_at=iso(Date.now()); const {error}=await sb.from("docs").update(patch).eq("id",id); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} const d=db.docs.find(x=>x.id===id); if(d&&apply) apply(d); return true; },
+    async delDoc(id){ const {error}=await sb.from("docs").delete().eq("id",id); if(error){toast("삭제 실패: "+error.message.slice(0,50));return false;} db.docs=db.docs.filter(d=>d.id!==id); return true; },
     addAsset:a=>optimisticInsert(db.assets,a,"assets",Maps.asset.to),
     addVersion:v=>optimisticInsert(db.versions,v,"versions",Maps.version.to),
     addReview:r=>optimisticInsert(db.reviews,r,"reviews",Maps.review.to),
@@ -1821,6 +1919,12 @@ function viewTask(id){
 
   <div class="split">
     <div>
+      <!-- 관련 기획안 -->
+      ${DOCS_OK?(()=>{ const docs=Store.docsOfTask(t.id); const canW=["manager","executive","member"].includes(role);
+        return `<div class="card" style="margin-bottom:18px"><div class="card-h"><h3>📄 관련 기획안</h3><span class="tag">${docs.length}</span>
+          ${canW?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-act="doc-new-for-task" data-id="${t.id}">＋ 기획안 작성</button>`:""}</div>
+          <div class="card-b">${docs.length?`<div class="tlist">${docs.map(d=>`<div class="titem" data-act="doc-open" data-id="${d.id}"><div class="main"><p class="tt">${esc(d.title||"제목 없는 문서")}</p><div class="mt"><span>${esc(stripHtml(d.body).slice(0,60))||"내용 없음"}</span><span class="due">${fmtDay(d.updatedAt)}</span></div></div><span class="badge">문서</span></div>`).join("")}</div>`:C.empty("📄","연결된 기획안 없음","‘＋ 기획안 작성’으로 이 업무의 기획 문서를 만드세요.")}</div></div>`;
+      })():""}
       <!-- 산출물 -->
       <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>산출물</h3><span class="tag">${assets.length}</span>
         ${["member","manager"].includes(role)&&assets.length?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-act="ai-precheck" data-id="${t.id}">🤖 AI 사전 점검</button>`:""}
@@ -2328,6 +2432,17 @@ const Actions={
   "ai-meeting-clear"(el){ const m=Store.meeting(el.dataset.id); if(m){ m._ai=null; render(); } },
   "content-add"(){ openContentModal(); },
   "spell-add"(){ openSpellModal(); },
+  async "doc-new"(){ if(!DOCS_OK){ toast("supabase_docs.sql 을 먼저 실행하세요"); return; }
+    const d={id:Store.uid(),title:"제목 없는 문서",body:"",brandId:null,taskId:null,tags:"",authorId:me().id,updatedBy:me().id,createdAt:Date.now(),updatedAt:Date.now()};
+    if(await Store.addDoc(d)){ session.route={view:"doc",id:d.id}; render(); } },
+  "doc-open"(el){ session.route={view:"doc",id:el.dataset.id}; render(); },
+  async "doc-new-for-task"(el){ if(!DOCS_OK){ toast("supabase_docs.sql 을 먼저 실행하세요"); return; }
+    const t=Store.task(el.dataset.id); if(!t) return;
+    const d={id:Store.uid(),title:t.title+" 기획안",body:"",brandId:t.brandId||null,taskId:t.id,tags:"",authorId:me().id,updatedBy:me().id,createdAt:Date.now(),updatedAt:Date.now()};
+    if(await Store.addDoc(d)){ session.route={view:"doc",id:d.id}; render(); } },
+  async "doc-del"(el){ const d=Store.doc(el.dataset.id); if(!d) return; if(confirm(`"${d.title}" 문서를 삭제할까요? 되돌릴 수 없습니다.`)){ if(await Store.delDoc(el.dataset.id)){ toast("삭제했습니다"); session.route={view:"docs"}; render(); } } },
+  async "doc-copylink"(el){ const url=location.origin+location.pathname+"#doc="+el.dataset.id;
+    try{ await navigator.clipboard.writeText(url); toast("문서 링크를 복사했습니다"); }catch(e){ toast("복사 실패 — 주소창을 확인하세요"); } },
   "spell-edit"(el){ const d=Store.spellDictAll().find(x=>x.id===el.dataset.id); if(d) openSpellModal(d); },
   async "spell-del"(el){ const d=Store.spellDictAll().find(x=>x.id===el.dataset.id); if(!d) return; if(confirm(`"${d.wrong} → ${d.correct}" 단어를 삭제할까요?`)){ if(await Store.delSpell(el.dataset.id)){ toast("삭제했습니다"); render(); } } },
   "exp-add"(){ openExpenseModal(); },
@@ -3011,6 +3126,161 @@ function openSpellModal(edit){
       }
       render();
     }});
+}
+
+
+/* ============================================================
+   기획안 문서 (Notion 대체) — 목록 + 리치 에디터
+   본문은 contenteditable HTML로 저장. 서식/표/체크리스트/이미지 지원.
+   ============================================================ */
+function docEscHtml(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* ---- 문서 목록 ---- */
+function viewDocs(){
+  const role=me().role, canWrite=["manager","executive","member"].includes(role);
+  if(!DOCS_OK) return `${ph("기획안","기획 문서를 작성·공유합니다.")}
+    <div class="card"><div class="card-b">${C.empty("📄","기능 준비 필요","supabase_docs.sql 을 Supabase에서 실행한 뒤 새로고침하세요.")}</div></div>`;
+  const q=(session.docQuery||"").trim().toLowerCase();
+  let list=Store.docsAll();
+  if(q) list=list.filter(d=>{ const bn=(Store.brand(d.brandId)?.name||"").toLowerCase();
+    return (d.title||"").toLowerCase().includes(q)||(d.tags||"").toLowerCase().includes(q)||bn.includes(q)||stripHtml(d.body).toLowerCase().includes(q); });
+  const right=canWrite?`<button class="btn btn-primary btn-sm" data-act="doc-new">＋ 새 기획안</button>`:"";
+  const cards=list.length?`<div class="doc-grid">${list.map(d=>{
+    const b=Store.brand(d.brandId), au=Store.user(d.authorId), preview=stripHtml(d.body).slice(0,110);
+    const linkedTask=d.taskId?Store.task(d.taskId):null;
+    return `<div class="doc-card" data-act="doc-open" data-id="${d.id}">
+      <div class="doc-card-t">${docEscHtml(d.title||"제목 없는 문서")}</div>
+      <div class="doc-card-p">${docEscHtml(preview)||"<span style='color:var(--faint)'>내용 없음</span>"}</div>
+      <div class="doc-card-m">
+        ${b?`<span class="tag">${esc(b.name)}</span>`:""}
+        ${linkedTask?`<span class="tag" style="border-color:var(--primary);color:var(--primary)">🔗 업무</span>`:""}
+        ${d.tags?d.tags.split(",").filter(Boolean).slice(0,2).map(tg=>`<span class="doc-tag">#${esc(tg.trim())}</span>`).join(""):""}
+        <span class="doc-card-meta">${au?esc(au.name)+" · ":""}${fmtDay(d.updatedAt)}</span>
+      </div>
+    </div>`;
+  }).join("")}</div>`
+    : C.empty("📄", q?"검색 결과가 없습니다":"아직 기획안이 없습니다", q?"다른 검색어를 시도해 보세요.":"‘＋ 새 기획안’으로 첫 문서를 작성하세요.");
+  return `${ph("기획안","기획 문서를 작성하고 팀과 공유합니다. 서식·표·체크리스트·이미지를 지원합니다.",right)}
+    <div class="toolbar"><input class="search" id="doc_q" type="text" placeholder="🔍 제목·내용·브랜드·태그 검색" value="${esc(session.docQuery||"")}"></div>
+    ${cards}`;
+}
+function stripHtml(html){ const t=document.createElement("div"); t.innerHTML=html||""; return (t.textContent||t.innerText||"").replace(/\s+/g," ").trim(); }
+
+/* ---- 문서 에디터 ---- */
+function viewDocEditor(id){
+  const d=Store.doc(id); if(!d) return `<div class="card"><div class="card-b">${C.empty("❓","문서를 찾을 수 없습니다","목록으로 돌아가세요.")}</div></div>`;
+  const role=me().role, canEdit=["manager","executive","member"].includes(role);
+  const brands=Store.db.brands.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const myTasks=(role==="manager"||role==="executive")?Store.db.tasks:Store.db.tasks.filter(t=>t.ownerId===me().id||Store.membersOf(t.id).some(m=>m.userId===me().id));
+  const au=Store.user(d.authorId), up=Store.user(d.updatedBy);
+  return `
+  <div class="doc-editor-top">
+    <span class="eb"><span style="cursor:pointer" data-act="goto" data-view="docs">← 기획안 목록</span></span>
+    <span style="flex:1"></span>
+    ${canEdit?`<span class="doc-savestate" id="doc_savestate">저장됨</span>`:`<span class="tag">읽기 전용</span>`}
+    <button class="btn btn-ghost btn-sm" data-act="doc-copylink" data-id="${d.id}">🔗 링크 복사</button>
+    ${canEdit?`<button class="btn btn-warn btn-sm" data-act="doc-del" data-id="${d.id}">삭제</button>`:""}
+  </div>
+  <div class="card doc-editor-card">
+    <div class="card-b">
+      <input id="doc_title" class="doc-title-in" type="text" value="${esc(d.title||"")}" placeholder="제목 없는 문서" ${canEdit?"":"readonly"}>
+      <div class="doc-meta-row">
+        <label>브랜드 <select id="doc_brand" ${canEdit?"":"disabled"}><option value="">(없음)</option>${brands.map(b=>`<option value="${b.id}" ${d.brandId===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select></label>
+        <label>연결 업무 <select id="doc_task" ${canEdit?"":"disabled"}><option value="">(없음)</option>${myTasks.map(t=>`<option value="${t.id}" ${d.taskId===t.id?"selected":""}>${esc(t.title)}</option>`).join("")}</select></label>
+        <label>태그 <input id="doc_tags" type="text" value="${esc(d.tags||"")}" placeholder="쉼표로 구분" ${canEdit?"":"readonly"}></label>
+      </div>
+      ${canEdit?docToolbarHtml():""}
+      <div id="doc_body" class="doc-body" contenteditable="${canEdit?"true":"false"}">${d.body||""}</div>
+      <div class="doc-foot hint">
+        ${au?"작성 "+esc(au.name):""} · 최종수정 ${fmtDay(d.updatedAt)}${up?" ("+esc(up.name)+")":""}
+        ${canEdit?" · 변경사항은 자동 저장됩니다":""}
+      </div>
+    </div>
+  </div>`;
+}
+
+function docToolbarHtml(){
+  const btn=(cmd,val,label,title)=>`<button type="button" class="doc-tb-btn" data-cmd="${cmd}"${val?` data-val="${val}"`:""} title="${title}">${label}</button>`;
+  return `<div class="doc-toolbar" id="doc_toolbar">
+    ${btn("formatBlock","h1","H1","제목1")}${btn("formatBlock","h2","H2","제목2")}${btn("formatBlock","h3","H3","제목3")}${btn("formatBlock","p","¶","본문")}
+    <span class="doc-tb-sep"></span>
+    ${btn("bold","","<b>B</b>","굵게")}${btn("italic","","<i>I</i>","기울임")}${btn("underline","","<u>U</u>","밑줄")}${btn("strikeThrough","","<s>S</s>","취소선")}
+    <span class="doc-tb-sep"></span>
+    ${btn("insertUnorderedList","","• 목록","글머리 목록")}${btn("insertOrderedList","","1. 목록","번호 목록")}${btn("_checklist","","☑ 체크","체크리스트")}
+    <span class="doc-tb-sep"></span>
+    ${btn("formatBlock","blockquote","❝ 인용","인용문")}${btn("_hr","","─ 구분","구분선")}${btn("_table","","▦ 표","표 삽입")}
+    <span class="doc-tb-sep"></span>
+    ${btn("_link","","🔗 링크","링크")}${btn("_image","","🖼 이미지","이미지 삽입")}
+    <span class="doc-tb-sep"></span>
+    ${btn("removeFormat","","✕ 서식제거","서식 지우기")}
+  </div>`;
+}
+
+/* ---- 에디터 초기화(진입 시 이벤트 연결 + 자동저장) ---- */
+let _docSaveTimer=null, _docCurId=null;
+function wireDocEditor(){
+  const id=session.route.id; _docCurId=id;
+  const body=document.getElementById("doc_body");
+  const titleEl=document.getElementById("doc_title");
+  const tb=document.getElementById("doc_toolbar");
+  const canEdit=body && body.getAttribute("contenteditable")==="true";
+  // 툴바 버튼
+  if(tb && canEdit){
+    tb.querySelectorAll(".doc-tb-btn").forEach(b=>{
+      b.onmousedown=e=>e.preventDefault(); // 포커스 유지
+      b.onclick=()=>{ docExec(b.dataset.cmd, b.dataset.val, body); scheduleDocSave(); };
+    });
+  }
+  // 자동 저장 트리거
+  if(canEdit){
+    ["input","blur"].forEach(ev=>{ body&&body.addEventListener(ev,scheduleDocSave); });
+    titleEl&&titleEl.addEventListener("input",()=>{ scheduleDocSave(); updateSaveState("편집 중…"); });
+    ["doc_brand","doc_task"].forEach(fid=>{ const el=document.getElementById(fid); if(el) el.onchange=()=>saveDocNow(); });
+    const tagEl=document.getElementById("doc_tags"); if(tagEl) tagEl.addEventListener("input",scheduleDocSave);
+  }
+}
+function docExec(cmd,val,body){
+  body && body.focus();
+  if(cmd==="_hr"){ document.execCommand("insertHorizontalRule"); return; }
+  if(cmd==="_checklist"){ docInsertChecklist(); return; }
+  if(cmd==="_table"){ docInsertTable(); return; }
+  if(cmd==="_link"){ const u=prompt("링크 URL을 입력하세요","https://"); if(u) document.execCommand("createLink",false,u); return; }
+  if(cmd==="_image"){ docInsertImage(body); return; }
+  if(cmd==="formatBlock"){ document.execCommand("formatBlock",false,val); return; }
+  document.execCommand(cmd,false,val||null);
+}
+function docInsertChecklist(){
+  const html=`<ul class="doc-checklist"><li><label><input type="checkbox"> 할 일</label></li></ul>`;
+  document.execCommand("insertHTML",false,html);
+}
+function docInsertTable(){
+  const r=parseInt(prompt("행 수",3),10)||3, c=parseInt(prompt("열 수",3),10)||3;
+  let h='<table class="doc-table"><tbody>';
+  for(let i=0;i<r;i++){ h+="<tr>"; for(let j=0;j<c;j++){ h+= i===0?"<th>제목</th>":"<td>내용</td>"; } h+="</tr>"; }
+  h+="</tbody></table><p><br></p>";
+  document.execCommand("insertHTML",false,h);
+}
+async function docInsertImage(body){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return;
+    toast("이미지 업로드 중…");
+    const att=await uploadOne(f);
+    if(att&&att.fileData){ body.focus(); document.execCommand("insertHTML",false,`<img src="${att.fileData}" alt="${esc(att.fileName||"")}" style="max-width:100%;border-radius:8px;margin:6px 0">`); scheduleDocSave(); }
+    else toast("이미지 삽입 실패");
+  };
+  inp.click();
+}
+function updateSaveState(txt){ const s=document.getElementById("doc_savestate"); if(s) s.textContent=txt; }
+function scheduleDocSave(){ updateSaveState("편집 중…"); clearTimeout(_docSaveTimer); _docSaveTimer=setTimeout(saveDocNow,1200); }
+async function saveDocNow(){
+  const id=_docCurId; if(!id) return;
+  const body=document.getElementById("doc_body"); const titleEl=document.getElementById("doc_title");
+  if(!body||body.getAttribute("contenteditable")!=="true") return;
+  const patch={ title:(titleEl?titleEl.value.trim():"")||"제목 없는 문서", body:body.innerHTML,
+    brand_id:val("doc_brand")||null, task_id:val("doc_task")||null, tags:val("doc_tags").trim()||null, updated_by:me().id };
+  updateSaveState("저장 중…");
+  const ok=await Store.updateDoc(id,patch,d=>{ d.title=patch.title; d.body=patch.body; d.brandId=patch.brand_id; d.taskId=patch.task_id; d.tags=patch.tags||""; d.updatedBy=me().id; d.updatedAt=Date.now(); });
+  updateSaveState(ok?"저장됨":"저장 실패");
 }
 
 function viewBlogStudio(){
@@ -4429,6 +4699,7 @@ function navConfig(){
   base.push({view:"meetings",ic:"📋",label:"회의"});
   base.push({view:"generator",ic:"🎨",label:"생성기"});
   base.push({view:"blog",ic:"✍️",label:"블로그 원고"});
+  base.push({view:"docs",ic:"📄",label:"기획안"});
   base.push({view:"spelldict",ic:"📗",label:"교정 사전"});
   base.push({view:"ads",ic:"📈",label:"광고 분석"});
   base.push({view:"content",ic:"📱",label:"콘텐츠 성과"});
@@ -4476,6 +4747,8 @@ function render(){
   else if(v==="brand") html=viewBrands();
   else if(v==="generator") html=viewGenerator();
   else if(v==="blog") html=viewBlogStudio();
+  else if(v==="docs") html=viewDocs();
+  else if(v==="doc") html=viewDocEditor(session.route.id);
   else if(v==="spelldict") html=viewSpellDict();
   else if(v==="ads") html=viewAds();
   else if(v==="content") html=viewContent();
@@ -4492,6 +4765,8 @@ function render(){
   if(v==="task") wireAssetReorder();
   if(v==="content"){ const ps=document.getElementById("c_period"); if(ps) ps.onchange=()=>{ session.contentPeriod=ps.value; render(); }; }
   if(v==="blog") wireBlogStudio();
+  if(v==="doc") wireDocEditor();
+  if(v==="docs"){ const dq=document.getElementById("doc_q"); if(dq){ dq.oninput=()=>{ session.docQuery=dq.value; clearTimeout(window.__docSearchT); window.__docSearchT=setTimeout(render,250); }; } }
   // 필터 입력 연결 (업무 뷰)
   if(v==="tasks"){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
@@ -4573,9 +4848,13 @@ async function afterAuth(){
   const profile=Store.user(user.id);
   if(!profile){ toast("계정 역할 매핑이 없습니다. 관리자에게 문의하세요."); await sb.auth.signOut(); document.getElementById("shell").style.display="none"; document.getElementById("login").style.display="grid"; return; }
   session.user=profile;
-  // 딥링크: 알림 '바로가기'(#task/<id>)로 들어온 경우 해당 업무로 이동
+  // 딥링크: 알림 '바로가기'(#task/<id>) 또는 문서 링크(#doc=<id>)로 들어온 경우 해당 화면으로 이동
   const hm=(location.hash||"").match(/#task\/([\w-]+)/);
-  session.route = (profile.role==="partner") ? {view:"generator"} : ((hm && Store.task(hm[1])) ? {view:"task",id:hm[1]} : {view:"dashboard"});
+  const dm=(location.hash||"").match(/#doc=([\w-]+)/);
+  session.route = (profile.role==="partner") ? {view:"generator"}
+    : (dm && Store.doc && Store.doc(dm[1])) ? {view:"doc",id:dm[1]}
+    : (hm && Store.task(hm[1])) ? {view:"task",id:hm[1]}
+    : {view:"dashboard"};
   render();
   Store.logAccess("login");   // 접속 로그 기록
   // 마감 점검: 로그인 직후 1회 + 30분마다 (팀장 세션에서만 실제 발송)
@@ -4717,7 +4996,7 @@ function openAiCfg(){
 }
 
 // 전역 이벤트 위임 (data-act) — 비동기 핸들러 동안 연타 방지
-const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","clear-date","toggle-brand","task-groupby","collapse-all-brands","expand-all-brands","zoom","zoom-cardnews","doc-view","download-asset","bulk-download","g-range","g-nav"]);
+const VIEWER_ALLOWED=new Set(["goto","open-task","open-post","open-meeting","open-notif","clear-filter","clear-date","toggle-brand","task-groupby","collapse-all-brands","expand-all-brands","doc-open","doc-copylink","zoom","zoom-cardnews","doc-view","download-asset","bulk-download","g-range","g-nav"]);
 const PARTNER_ALLOWED=new Set(["goto"]);   // 파트너: 생성기 외 동작 차단(메뉴 이동만)
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
