@@ -4787,6 +4787,11 @@ function renderBar(){
 }
 function render(){
   if(me() && me().role==="partner" && session.route.view!=="generator") session.route={view:"generator"};
+  // 현재 화면을 URL 해시에 기록 → 새로고침 시 같은 화면 복원 (로그인 상태에서만)
+  if(me() && session.route && session.route.view){
+    const r=session.route; const h = r.id ? `#${r.view}=${r.id}` : `#${r.view}`;
+    if(location.hash!==h){ try{ history.replaceState(null,"",h); }catch(e){} }
+  }
   renderBar(); renderSide();
   const v=session.route.view; let html="";
   if(v==="dashboard") html=viewDashboard();
@@ -4882,6 +4887,31 @@ function updateNtClear(){
     } else if(host.firstChild!==btn){ host.insertBefore(btn, host.firstChild); }
   } else if(btn){ btn.remove(); }
 }
+/* 새로고침 시 URL 해시로 이전 화면 복원. 권한·존재 여부를 검증해 안전한 경우만 복원, 아니면 대시보드. */
+function restoreRouteFromHash(profile){
+  if(profile.role==="partner") return {view:"generator"};
+  const raw=(location.hash||"").replace(/^#/,"");
+  if(!raw) return {view:"dashboard"};
+  // 구형 딥링크 #task/<id>
+  let m=raw.match(/^task\/([\w-]+)$/);
+  if(m && Store.task(m[1])) return {view:"task",id:m[1]};
+  // 신형 #view 또는 #view=id
+  m=raw.match(/^([a-z]+)(?:=([\w-]+))?$/i);
+  if(!m) return {view:"dashboard"};
+  const view=m[1], id=m[2]||null;
+  // id가 필요한 상세 화면: 대상이 실제로 존재할 때만 복원
+  if(view==="task") return (id&&Store.task(id))?{view:"task",id}:{view:"tasks"};
+  if(view==="doc") return (id&&Store.doc&&Store.doc(id))?{view:"doc",id}:{view:"docs"};
+  if(view==="post") return (id&&Store.db.posts.some(p=>p.id===id))?{view:"post",id}:{view:"community"};
+  if(view==="meeting") return (id&&Store.db.meetings.some(x=>x.id===id))?{view:"meeting",id}:{view:"meetings"};
+  // id 없는 목록/일반 화면: 사용자에게 실제로 허용된 메뉴(navConfig)만 복원
+  let allowed;
+  try{ allowed=new Set(navConfig().map(n=>n.view)); }catch(e){ allowed=new Set(["dashboard"]); }
+  // 메뉴엔 없지만 접근 가능한 상세/보조 화면도 허용
+  ["generator","blog","docs","spelldict"].forEach(x=>allowed.add(x));
+  if(allowed.has(view)) return {view};
+  return {view:"dashboard"};
+}
 async function login(){
   const email=document.getElementById("loginId").value.trim(), pw=document.getElementById("loginPw").value;
   const err=document.getElementById("loginErr");
@@ -4904,13 +4934,9 @@ async function afterAuth(){
   const profile=Store.user(user.id);
   if(!profile){ toast("계정 역할 매핑이 없습니다. 관리자에게 문의하세요."); await sb.auth.signOut(); document.getElementById("shell").style.display="none"; document.getElementById("login").style.display="grid"; return; }
   session.user=profile;
-  // 딥링크: 알림 '바로가기'(#task/<id>) 또는 문서 링크(#doc=<id>)로 들어온 경우 해당 화면으로 이동
-  const hm=(location.hash||"").match(/#task\/([\w-]+)/);
-  const dm=(location.hash||"").match(/#doc=([\w-]+)/);
-  session.route = (profile.role==="partner") ? {view:"generator"}
-    : (dm && Store.doc && Store.doc(dm[1])) ? {view:"doc",id:dm[1]}
-    : (hm && Store.task(hm[1])) ? {view:"task",id:hm[1]}
-    : {view:"dashboard"};
+  // 새로고침/딥링크 시 URL 해시로 이전 화면 복원
+  // 지원 형식: #view (예: #tasks), #view=id (예: #doc=xxx, #task=xxx), 구형 #task/id
+  session.route = restoreRouteFromHash(profile);
   render();
   Store.logAccess("login");   // 접속 로그 기록
   // 마감 점검: 로그인 직후 1회 + 30분마다 (팀장 세션에서만 실제 발송)
@@ -5001,7 +5027,7 @@ function scheduleRealtimeRefresh(){ clearTimeout(rtTimer); rtTimer=setTimeout(as
   }
   catch(e){ console.error("realtime refresh:",e); }
 }, 350); }
-async function logout(){ try{ await Store.logAccess("logout"); }catch(e){} stopRealtime(); try{ await sb.auth.signOut(); }catch(e){} session.user=null; Store.init(); document.getElementById("loginPw").value=""; document.getElementById("loginId").value=""; document.getElementById("shell").style.display="none"; document.getElementById("login").style.display="grid"; document.getElementById("loginId").focus(); }
+async function logout(){ try{ await Store.logAccess("logout"); }catch(e){} stopRealtime(); try{ await sb.auth.signOut(); }catch(e){} session.user=null; try{ history.replaceState(null,"",location.pathname); }catch(e){} Store.init(); document.getElementById("loginPw").value=""; document.getElementById("loginId").value=""; document.getElementById("shell").style.display="none"; document.getElementById("login").style.display="grid"; document.getElementById("loginId").focus(); }
 function openPwChange(){
   Modal.open({title:"비밀번호 변경",okLabel:"변경",body:`
     <label class="fld"><span class="lab">새 비밀번호</span><input type="password" id="pw_new" placeholder="새 비밀번호 (6자 이상)"></label>
