@@ -612,7 +612,6 @@
   .doc-body li{margin:3px 0}
   .doc-body blockquote{border-left:3px solid var(--primary);margin:12px 0;padding:4px 0 4px 16px;color:var(--ink-soft);background:var(--surface-2);border-radius:0 8px 8px 0}
   .doc-body hr{border:0;border-top:1px solid var(--line);margin:18px 0}
-  .doc-body a{color:var(--primary);text-decoration:underline}
   .doc-body img{max-width:100%;border-radius:8px}
   .doc-table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
   .doc-table th,.doc-table td{border:1px solid var(--line);padding:7px 10px;text-align:left}
@@ -631,6 +630,22 @@
   .doc-toggle-b{padding:10px 14px 10px 30px;border-top:1px solid var(--line)}
   .doc-toggle-b p:first-child{margin-top:0}
   .doc-toggle[open="false"] .doc-toggle-b{display:none}
+  /* 링크: 편집 중엔 Ctrl/Cmd+클릭, 읽기전용은 클릭으로 이동 */
+  .doc-body a{color:var(--primary);text-decoration:underline;cursor:pointer}
+  .doc-body[contenteditable="true"] a{cursor:text}
+  /* 블록/이미지 선택 표시 */
+  .doc-body .doc-sel{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+  .doc-body img{cursor:pointer}
+  /* 이미지 크기조절·삭제 툴바 */
+  .doc-imgtools{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+  .doc-imgtools button{font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink-soft);cursor:pointer}
+  .doc-imgtools button:hover{border-color:var(--line-strong)}
+  .doc-imgtools button.del{color:#c0392b;border-color:rgba(217,60,60,.35)}
+  /* 임베드(유튜브 등) — 16:9 반응형 */
+  .doc-embed{margin:12px 0;position:relative}
+  .doc-embed.doc-sel{outline:2px solid var(--primary);outline-offset:3px}
+  .doc-embed-frame{position:relative;width:100%;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000}
+  .doc-embed-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 </style>
 </head>
 <body>
@@ -3265,7 +3280,7 @@ function docToolbarHtml(){
     <span class="doc-tb-sep"></span>
     ${btn("formatBlock","blockquote","❝ 인용","인용문")}${btn("_hr","","─ 구분","구분선")}${btn("_table","","▦ 표","표 삽입")}${btn("_toggle","","▸ 토글","접기/펴기 블록")}
     <span class="doc-tb-sep"></span>
-    ${btn("_link","","🔗 링크","링크")}${btn("_image","","🖼 이미지","이미지 삽입")}
+    ${btn("_link","","🔗 링크","링크")}${btn("_image","","🖼 이미지","이미지 삽입")}${btn("_embed","","▶ 임베드","유튜브·영상 임베드")}
     <span class="doc-tb-sep"></span>
     ${btn("removeFormat","","✕ 서식제거","서식 지우기")}
   </div>`;
@@ -3304,15 +3319,75 @@ function wireDocEditor(){
       if(canEdit) scheduleDocSave();
     });
   }
+  // 링크: 편집 중에도 Ctrl/Cmd+클릭으로 이동, 읽기 전용에선 그냥 클릭으로 이동
+  if(body){
+    body.addEventListener("click",e=>{
+      const a=e.target.closest("a"); if(!a) return;
+      if(!canEdit || e.ctrlKey || e.metaKey){ e.preventDefault(); window.open(a.href,"_blank","noopener"); }
+    });
+  }
+  // 블록/이미지 선택·삭제·크기조절 (편집 모드)
+  if(canEdit && body){
+    // 클릭한 블록(이미지·표·토글·임베드·구분선) 선택 표시
+    body.addEventListener("click",e=>{
+      docClearSelection(body);
+      const img=e.target.closest("img");
+      const block=e.target.closest(".doc-embed, .doc-table, .doc-toggle, hr");
+      if(img){ img.classList.add("doc-sel"); docShowImageTools(img,body); }
+      else if(block){ block.classList.add("doc-sel"); }
+    });
+    // Delete/Backspace로 선택된 블록·이미지 삭제
+    body.addEventListener("keydown",e=>{
+      if(e.key==="Delete"||e.key==="Backspace"){
+        const sel=body.querySelector(".doc-sel");
+        if(sel){ e.preventDefault(); const wrap=sel.closest(".doc-embed")||sel; wrap.remove(); docRemoveImageTools(); scheduleDocSave(); }
+      }
+    });
+    // 붙여넣기(Ctrl+V) 이미지: 삭제·리사이즈 가능하도록 스타일 클래스 부여
+    body.addEventListener("paste",e=>{
+      setTimeout(()=>{ body.querySelectorAll("img:not(.doc-img)").forEach(im=>{ im.classList.add("doc-img"); if(!im.style.maxWidth) im.style.maxWidth="100%"; }); scheduleDocSave(); },50);
+    });
+    // 빈 곳 클릭 시 선택 해제
+    body.addEventListener("blur",()=>docRemoveImageTools());
+  }
 }
+// 선택 표시 해제
+function docClearSelection(body){ body.querySelectorAll(".doc-sel").forEach(el=>el.classList.remove("doc-sel")); docRemoveImageTools(); }
+// 이미지 크기조절 툴바 표시 (작게/보통/크게/원본 + 삭제)
+function docShowImageTools(img,body){
+  docRemoveImageTools();
+  const bar=document.createElement("div"); bar.className="doc-imgtools"; bar.contentEditable="false";
+  bar.innerHTML=`<button type="button" data-w="30%">작게</button><button type="button" data-w="60%">보통</button><button type="button" data-w="100%">크게</button><button type="button" data-w="">원본</button><button type="button" data-del="1" class="del">삭제</button>`;
+  bar.querySelectorAll("button").forEach(b=>{
+    b.onmousedown=e=>e.preventDefault();
+    b.onclick=()=>{ if(b.dataset.del){ img.remove(); docRemoveImageTools(); } else { img.style.width=b.dataset.w||""; img.style.maxWidth="100%"; } scheduleDocSave(); };
+  });
+  // 이미지 바로 위에 붙임
+  img.parentNode.insertBefore(bar,img);
+  bar._forImg=img;
+}
+function docRemoveImageTools(){ document.querySelectorAll(".doc-imgtools").forEach(b=>b.remove()); const b=document.getElementById("doc_body"); if(b) b.querySelectorAll("img.doc-sel").forEach(i=>i.classList.remove("doc-sel")); }
 function docExec(cmd,val,body){
   body && body.focus();
   if(cmd==="_hr"){ document.execCommand("insertHorizontalRule"); return; }
   if(cmd==="_checklist"){ docInsertChecklist(); return; }
   if(cmd==="_table"){ docInsertTable(); return; }
   if(cmd==="_toggle"){ docInsertToggle(); return; }
-  if(cmd==="_link"){ const u=prompt("링크 URL을 입력하세요","https://"); if(u) document.execCommand("createLink",false,u); return; }
+  if(cmd==="_link"){
+    const sel=window.getSelection(); const hasText=sel && sel.toString().trim();
+    const u=prompt("링크 URL을 입력하세요","https://"); if(!u) return;
+    const url=/^https?:\/\//i.test(u)?u:("https://"+u);
+    if(hasText){ document.execCommand("createLink",false,url);
+      // 방금 만든 링크에 target 지정
+      const a=sel.anchorNode&&sel.anchorNode.parentElement&&sel.anchorNode.parentElement.closest("a"); if(a){ a.target="_blank"; a.rel="noopener"; }
+    } else {
+      const label=prompt("표시할 텍스트 (비우면 주소 그대로)", url)||url;
+      document.execCommand("insertHTML",false,`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>&nbsp;`);
+    }
+    return;
+  }
   if(cmd==="_image"){ docInsertImage(body); return; }
+  if(cmd==="_embed"){ docInsertEmbed(); return; }
   if(cmd==="formatBlock"){ document.execCommand("formatBlock",false,val); return; }
   document.execCommand(cmd,false,val||null);
 }
@@ -3335,12 +3410,32 @@ function docInsertToggle(){
     `</div><p><br></p>`;
   document.execCommand("insertHTML",false,html);
 }
+function ytId(url){
+  // 유튜브 URL에서 영상 ID 추출 (watch?v=, youtu.be/, shorts/, embed/)
+  const m=String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+  return m?m[1]:null;
+}
+function vimeoId(url){ const m=String(url).match(/vimeo\.com\/(?:video\/)?(\d+)/); return m?m[1]:null; }
+function docInsertEmbed(){
+  const raw=prompt("임베드할 링크를 붙여넣으세요 (유튜브·Vimeo 링크 또는 임베드 주소)","https://"); if(!raw) return;
+  const url=raw.trim();
+  const yt=ytId(url), vm=vimeoId(url);
+  let embedSrc=null;
+  if(yt) embedSrc=`https://www.youtube.com/embed/${yt}`;
+  else if(vm) embedSrc=`https://player.vimeo.com/video/${vm}`;
+  else if(/^https?:\/\/.+/i.test(url)) embedSrc=url;  // 기타 임베드 주소 그대로 시도
+  if(!embedSrc){ toast("임베드할 수 없는 링크예요. 유튜브·Vimeo 링크를 확인해 주세요"); return; }
+  // contenteditable=false 로 감싸 블록 단위로 선택·삭제 가능하게
+  const html=`<div class="doc-embed" contenteditable="false"><div class="doc-embed-frame"><iframe src="${esc(embedSrc)}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe></div></div><p><br></p>`;
+  document.execCommand("insertHTML",false,html);
+  scheduleDocSave();
+}
 async function docInsertImage(body){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
   inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return;
     toast("이미지 업로드 중…");
     const att=await uploadOne(f);
-    if(att&&att.fileData){ body.focus(); document.execCommand("insertHTML",false,`<img src="${att.fileData}" alt="${esc(att.fileName||"")}" style="max-width:100%;border-radius:8px;margin:6px 0">`); scheduleDocSave(); }
+    if(att&&att.fileData){ body.focus(); document.execCommand("insertHTML",false,`<img src="${att.fileData}" alt="${esc(att.fileName||"")}" class="doc-img" style="max-width:100%;border-radius:8px;margin:6px 0"><p><br></p>`); scheduleDocSave(); }
     else toast("이미지 삽입 실패");
   };
   inp.click();
@@ -3351,7 +3446,12 @@ async function saveDocNow(){
   const id=_docCurId; if(!id) return;
   const body=document.getElementById("doc_body"); const titleEl=document.getElementById("doc_title");
   if(!body||body.getAttribute("contenteditable")!=="true") return;
-  const patch={ title:(titleEl?titleEl.value.trim():"")||"제목 없는 문서", body:body.innerHTML,
+  // 저장용 HTML에서 임시 UI(이미지 툴바)·선택표시 제거
+  const clone=body.cloneNode(true);
+  clone.querySelectorAll(".doc-imgtools").forEach(el=>el.remove());
+  clone.querySelectorAll(".doc-sel").forEach(el=>el.classList.remove("doc-sel"));
+  const cleanBody=clone.innerHTML;
+  const patch={ title:(titleEl?titleEl.value.trim():"")||"제목 없는 문서", body:cleanBody,
     brand_id:val("doc_brand")||null, task_id:val("doc_task")||null, tags:val("doc_tags").trim()||null, updated_by:me().id };
   updateSaveState("저장 중…");
   const ok=await Store.updateDoc(id,patch,d=>{ d.title=patch.title; d.body=patch.body; d.brandId=patch.brand_id; d.taskId=patch.task_id; d.tags=patch.tags||""; d.updatedBy=me().id; d.updatedAt=Date.now(); });
