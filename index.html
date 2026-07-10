@@ -298,12 +298,12 @@
   .alist img.prev-media{width:100%;height:170px;object-fit:contain;max-height:none;margin:0;cursor:zoom-in;background:var(--surface-2)}
   .cardnews-cover{position:relative;cursor:zoom-in}
   .cardnews-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;pointer-events:none}
-  /* 여러 이미지 겹침 표지 — 뒤에 살짝 어긋난 두 장이 겹쳐 보임 */
-  .multi-cover{position:relative;cursor:zoom-in;padding:6px 6px 0 0}
-  .multi-cover .multi-top{position:relative;z-index:3;border:1px solid var(--line)}
-  .multi-cover .multi-stack{position:absolute;border-radius:7px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow)}
-  .multi-cover .multi-stack-1{z-index:2;top:3px;right:3px;left:9px;bottom:-3px}
-  .multi-cover .multi-stack-2{z-index:1;top:6px;right:6px;left:12px;bottom:-6px;opacity:.7}
+  /* 여러 이미지 겹침 표지 — 뒤에 2·3번째 이미지가 오른쪽으로 살짝 삐져나와 실제로 보임 */
+  .multi-cover{position:relative;cursor:zoom-in;padding:8px 14px 0 0}
+  .multi-cover .multi-top{position:relative;z-index:3;border:1px solid var(--line);border-radius:7px}
+  .multi-cover .multi-peek{position:absolute;border-radius:7px;border:1px solid var(--line-strong);box-shadow:var(--shadow);object-fit:cover;background:var(--surface-2)}
+  .multi-cover .multi-peek-1{z-index:2;top:4px;right:6px;width:64%;height:calc(100% - 8px)}
+  .multi-cover .multi-peek-2{z-index:1;top:8px;right:0;width:64%;height:calc(100% - 16px);opacity:.85}
   .dnd-list{margin-top:4px;display:flex;flex-direction:column;gap:6px}
   .dnd-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--surface)}
   .dnd-item.dragging{opacity:.45}
@@ -1568,10 +1568,14 @@ const C={
     // 여러 이미지(pages 2장 이상): 카드뉴스든 일반 이미지든 겹침 표지 + 장수 배지
     if(a.pages && a.pages.length>=2){ const cover=a.pages[0]; const isCard=a.type==="cardnews";
       const label=isCard?"카드뉴스":(a.note||ASSET_TYPES[a.type]||"이미지");
+      const p2=a.pages[1], p3=a.pages[2];
+      const src=p=>p?(p.thumbData||p.fileData):"";
+      const back = (p3?`<img src="${src(p3)}" alt="" class="multi-peek multi-peek-2" loading="lazy">`:"")
+                 + (p2?`<img src="${src(p2)}" alt="" class="multi-peek multi-peek-1" loading="lazy">`:"");
       return `<div class="prev">
         <div class="multi-cover" data-act="zoom-cardnews" data-id="${a.id}">
-          <span class="multi-stack multi-stack-2"></span><span class="multi-stack multi-stack-1"></span>
-          <img src="${cover.thumbData||cover.fileData}" alt="" class="prev-media multi-top" loading="lazy">
+          ${back}
+          <img src="${src(cover)}" alt="" class="prev-media multi-top" loading="lazy">
           <span class="cardnews-badge">${isCard?"🃏":"🖼"} ${a.pages.length}장</span>
         </div>
         <div class="prev-name">${esc(label)} · ${a.pages.length}장</div>
