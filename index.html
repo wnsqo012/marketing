@@ -196,14 +196,16 @@
 
   /* task list */
   .tlist{display:flex;flex-direction:column;gap:10px}
-  .tgroup{margin-bottom:18px}
+  .tgroup{margin-bottom:18px;--gc:#8a98a0;border-left:3px solid var(--gc);border-radius:4px 12px 12px 4px;padding:2px 0 2px 12px;background:linear-gradient(to right, color-mix(in srgb, var(--gc) 6%, transparent), transparent 40%)}
   .tgroup:last-child{margin-bottom:0}
-  .tgroup-h{display:flex;align-items:center;gap:9px;margin:0 2px 9px;padding-bottom:7px;border-bottom:1px solid var(--line);user-select:none}
-  .tgroup-h:hover .bn{color:var(--primary)}
-  .tgroup-h .tw{font-size:11px;color:var(--muted);width:12px;display:inline-block;text-align:center}
-  .tgroup-h .bn{font-family:var(--fd);font-weight:600;font-size:15px;color:var(--ink);transition:color .12s}
-  .tgroup-h .avatar{width:22px;height:22px;font-size:10px;flex-shrink:0}
-  .tgroup-h .cnt{font-family:var(--fm);font-size:11px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:1px 9px}
+  .tgroup-h{display:flex;align-items:center;gap:9px;margin:0 2px 9px;padding:6px 10px 6px 8px;border-radius:8px;background:color-mix(in srgb, var(--gc) 12%, transparent);border-bottom:0;user-select:none}
+  .tgroup-h:hover{background:color-mix(in srgb, var(--gc) 18%, transparent)}
+  .tgroup-h:hover .bn{color:var(--ink)}
+  .tgroup-h .tw{font-size:11px;color:var(--gc);width:12px;display:inline-block;text-align:center;font-weight:700}
+  .tgroup-h .bn{font-family:var(--fd);font-weight:700;font-size:15px;color:var(--ink);transition:color .12s}
+  .tgroup-h .avatar{width:24px;height:24px;font-size:10px;flex-shrink:0;box-shadow:0 0 0 2px color-mix(in srgb, var(--gc) 40%, transparent)}
+  .tgroup-h .brand-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px color-mix(in srgb, var(--gc) 30%, transparent)}
+  .tgroup-h .cnt{font-family:var(--fm);font-size:11px;color:#fff;background:var(--gc);border:0;border-radius:20px;padding:2px 10px;font-weight:600;margin-left:2px}
   .titem{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surface);border:1px solid var(--line);border-radius:11px;cursor:pointer;transition:.12s}
   .titem:hover{border-color:var(--line-strong);box-shadow:var(--shadow)}
   .titem .main{flex:1;min-width:0}
@@ -731,6 +733,8 @@ const ASSIGNEE_COLORS = {
   "이희수": "#4CAF71",  // 그린
   "노현서": "#E6B325",  // 옐로우
   "형지수": "#3B82C4",  // 파랑
+  "형지수(실무용)": "#5B9BD5",  // 밝은 파랑
+  "형지수(팀장용)": "#3B82C4",  // 파랑
 };
 // 목록에 없는 담당자용 기본 색상(자동 배정, 중복 방지용 여러 개)
 const ASSIGNEE_FALLBACK = ["#6C8EBF","#9673A6","#3A8A7A","#C1573F","#7C6BB0","#5B9BD5","#B07D2E"];
@@ -740,6 +744,13 @@ function assigneeColor(name){
   if(ASSIGNEE_COLORS[name]) return ASSIGNEE_COLORS[name];
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
   return ASSIGNEE_FALLBACK[h % ASSIGNEE_FALLBACK.length];
+}
+// 브랜드 이름 → 색 (담당자와 같은 팔레트 방식으로 안정적 배정)
+const BRAND_PALETTE = ["#3B82C4","#EC6E9C","#4CAF71","#E6B325","#9673A6","#3A8A7A","#C1573F","#6C8EBF","#7C6BB0","#B07D2E"];
+function brandColor(name){
+  if(!name) return "#8a98a0";
+  let h=0; for(let i=0;i<name.length;i++) h=(h*37+name.charCodeAt(i))>>>0;
+  return BRAND_PALETTE[h % BRAND_PALETTE.length];
 }
 const PRIORITIES = [{k:"high",l:"높음"},{k:"mid",l:"보통"},{k:"low",l:"낮음"}];
 const PURPOSES = ["신규 유입","구매전환","재구매","브랜드인지","리쿠르팅","이벤트","파트너 모집"];
@@ -1872,10 +1883,12 @@ function taskListGrouped(list, mode){
     const gkey = mode+":"+key;                       // 접힘 상태 키 (모드별로 분리)
     const collapsed = !!session.collapsedBrands[gkey];
     const label = nameOf(key);
+    // 그룹 고유 색 (담당자=assigneeColor, 브랜드=brandColor). 미지정은 회색.
+    const gcolor = key==="__none__" ? "#8a98a0" : (mode==="owner" ? assigneeColor(label) : brandColor(label));
     const head = mode==="owner"
       ? `${C.avatar(Store.user(key))}<span class="bn">${esc(label)}</span>`
-      : `<span class="bn">${esc(label)}</span>`;
-    return `<div class="tgroup${collapsed?" collapsed":""}">
+      : `<span class="brand-dot" style="background:${gcolor}"></span><span class="bn">${esc(label)}</span>`;
+    return `<div class="tgroup${collapsed?" collapsed":""}" style="--gc:${gcolor}">
       <div class="tgroup-h" data-act="toggle-brand" data-brand="${gkey}" style="cursor:pointer">
         <span class="tw">${collapsed?"▸":"▾"}</span>
         ${head}<span class="cnt">${items.length}건</span>
