@@ -298,6 +298,12 @@
   .alist img.prev-media{width:100%;height:170px;object-fit:contain;max-height:none;margin:0;cursor:zoom-in;background:var(--surface-2)}
   .cardnews-cover{position:relative;cursor:zoom-in}
   .cardnews-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;pointer-events:none}
+  /* 여러 이미지 겹침 표지 — 뒤에 살짝 어긋난 두 장이 겹쳐 보임 */
+  .multi-cover{position:relative;cursor:zoom-in;padding:6px 6px 0 0}
+  .multi-cover .multi-top{position:relative;z-index:3;border:1px solid var(--line)}
+  .multi-cover .multi-stack{position:absolute;border-radius:7px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow)}
+  .multi-cover .multi-stack-1{z-index:2;top:3px;right:3px;left:9px;bottom:-3px}
+  .multi-cover .multi-stack-2{z-index:1;top:6px;right:6px;left:12px;bottom:-6px;opacity:.7}
   .dnd-list{margin-top:4px;display:flex;flex-direction:column;gap:6px}
   .dnd-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--surface)}
   .dnd-item.dragging{opacity:.45}
@@ -611,6 +617,16 @@
   .doc-checklist li{display:flex;align-items:flex-start;gap:7px}
   .doc-checklist input[type=checkbox]{margin-top:4px}
   .doc-foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}
+  /* 토글(접기/펴기) 블록 */
+  .doc-toggle{border:1px solid var(--line);border-radius:8px;margin:10px 0;overflow:hidden}
+  .doc-toggle-h{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface-2);cursor:pointer;user-select:none}
+  .doc-toggle-h:hover{background:var(--surface-2);filter:brightness(0.98)}
+  .doc-toggle-arr{font-size:12px;color:var(--muted);transition:transform .15s;flex-shrink:0}
+  .doc-toggle[open="true"] .doc-toggle-arr{transform:rotate(90deg)}
+  .doc-toggle-t{font-weight:600;font-size:14px;color:var(--ink);outline:none;flex:1}
+  .doc-toggle-b{padding:10px 14px 10px 30px;border-top:1px solid var(--line)}
+  .doc-toggle-b p:first-child{margin-top:0}
+  .doc-toggle[open="false"] .doc-toggle-b{display:none}
 </style>
 </head>
 <body>
@@ -1549,10 +1565,16 @@ const C={
     const ic={plan:"📄",design:"🖼",content:"📝",cardnews:"🃏",video:"▶",landing:"🌐",ad:"📣",advert:"📢"}[a.type]||"📎";
     const canDL=["manager","executive"].includes(me().role);
     const dl=(url,name)=> canDL?`<button class="btn btn-ghost btn-sm" data-act="download-asset" data-src="${url}" data-name="${esc(name||'file')}">⬇ 다운로드</button>`:"";
-    if(a.type==="cardnews" && a.pages && a.pages.length){ const cover=a.pages[0];
+    // 여러 이미지(pages 2장 이상): 카드뉴스든 일반 이미지든 겹침 표지 + 장수 배지
+    if(a.pages && a.pages.length>=2){ const cover=a.pages[0]; const isCard=a.type==="cardnews";
+      const label=isCard?"카드뉴스":(a.note||ASSET_TYPES[a.type]||"이미지");
       return `<div class="prev">
-        <div class="cardnews-cover" data-act="zoom-cardnews" data-id="${a.id}"><img src="${cover.thumbData||cover.fileData}" alt="" class="prev-media" loading="lazy"><span class="cardnews-badge">🃏 ${a.pages.length}장</span></div>
-        <div class="prev-name">${esc(a.note||"카드뉴스")} · ${a.pages.length}장</div>
+        <div class="multi-cover" data-act="zoom-cardnews" data-id="${a.id}">
+          <span class="multi-stack multi-stack-2"></span><span class="multi-stack multi-stack-1"></span>
+          <img src="${cover.thumbData||cover.fileData}" alt="" class="prev-media multi-top" loading="lazy">
+          <span class="cardnews-badge">${isCard?"🃏":"🖼"} ${a.pages.length}장</span>
+        </div>
+        <div class="prev-name">${esc(label)} · ${a.pages.length}장</div>
         <div class="prev-acts"><button class="btn btn-ghost btn-sm" data-act="zoom-cardnews" data-id="${a.id}">🔍 펼쳐보기</button>${dl(cover.fileData,cover.fileName)}</div></div>`;
     }
     if(a.fileData){ const mime=a.fileMime||"";
@@ -2812,19 +2834,33 @@ function openAssetModal(taskId){
 }
 function openVersionModal(assetId){
   const a=Store.db.assets.find(x=>x.id===assetId);
+  asFiles=[]; asFileUrls.forEach(u=>URL.revokeObjectURL(u)); asFileUrls=[];
   Modal.open({title:`새 버전 (v${a.ver+1})`,okLabel:"버전 추가",body:`
     <label class="fld"><span class="lab">변경 내용</span><input type="text" id="v_changes" placeholder="무엇을 바꿨는지"></label>
     <label class="fld"><span class="lab">변경 사유</span><input type="text" id="v_reason" placeholder="예) 팀장 반려 반영"></label>
     <hr style="border:0;border-top:1px solid var(--line);margin:6px 0 14px">${assetFormBody()}`,
     submit:async()=>{
       if(!val("v_changes").trim()){toast("변경 내용을 입력하세요");return false;}
-      const att=await collectAttachment(); if(att===null)return false;
+      const atts=await collectFiles(); if(!atts.length){ toast("새 버전의 파일·링크·텍스트를 입력하세요"); return false; }
       const newVer=a.ver+1;
-      const patch={ver:newVer,link:att.link||a.link||null,file_path:att.filePath||a.filePath||null,file_name:att.fileName||a.fileName||null,file_mime:att.fileMime||a.fileMime||null};
-      if(att.body) patch.body=att.body;
-      if(att.thumbPath) patch.thumb_path=att.thumbPath;
-      const ok=await Store.update("assets",a.id,patch,()=>{ a.ver=newVer; if(att.body)a.body=att.body; if(att.fileData||att.link){a.fileData=att.fileData;a.fileName=att.fileName;a.fileMime=att.fileMime;a.filePath=att.filePath;a.link=att.link;a.thumbPath=att.thumbPath||null;a.thumbData=att.thumbData||null;} });
-      if(!ok){ toast("버전 저장 실패 — 다시 시도하세요"); return false; }
+      const imgs=atts.filter(x=>x.fileData&&(x.fileMime||"").startsWith("image/"));
+      const first=atts[0];
+      const patch={ver:newVer};
+      // 이미지가 여러 장이면 pages로 저장(대표=첫 장), 아니면 단일 첨부로 저장
+      if(imgs.length>=2 && ASSET_PAGES_OK){
+        const cover=imgs[0];
+        const pages=imgs.map(x=>({filePath:x.filePath,fileName:x.fileName,fileMime:x.fileMime,thumbPath:x.thumbPath||null,fileData:x.fileData,thumbData:x.thumbData||null}));
+        patch.pages=pages; patch.file_path=cover.filePath; patch.file_name=cover.fileName; patch.file_mime=cover.fileMime; patch.thumb_path=cover.thumbPath||null; patch.link=null; patch.body=null;
+        Object.assign(patch,{}); 
+        const ok=await Store.update("assets",a.id,patch,()=>{ a.ver=newVer; a.pages=pages; a.fileData=cover.fileData; a.fileName=cover.fileName; a.fileMime=cover.fileMime; a.filePath=cover.filePath; a.thumbPath=cover.thumbPath||null; a.thumbData=cover.thumbData||null; a.link=null; a.body=""; });
+        if(!ok){ toast("버전 저장 실패 — 다시 시도하세요"); return false; }
+      } else {
+        // 단일 파일 / 링크 / 텍스트
+        patch.pages=null; patch.link=first.link||null; patch.file_path=first.filePath||null; patch.file_name=first.fileName||null; patch.file_mime=first.fileMime||null;
+        if(first.body) patch.body=first.body; if(first.thumbPath) patch.thumb_path=first.thumbPath;
+        const ok=await Store.update("assets",a.id,patch,()=>{ a.ver=newVer; a.pages=null; if(first.body)a.body=first.body; a.fileData=first.fileData||null; a.fileName=first.fileName||null; a.fileMime=first.fileMime||null; a.filePath=first.filePath||null; a.link=first.link||null; a.thumbPath=first.thumbPath||null; a.thumbData=first.thumbData||null; });
+        if(!ok){ toast("버전 저장 실패 — 다시 시도하세요"); return false; }
+      }
       const vN={id:Store.uid(),assetId,no:a.ver,changes:val("v_changes").trim(),reason:val("v_reason").trim()||"-",editorId:me().id,createdAt:Date.now()};
       await Store.addVersion(vN);
       const t=Store.task(a.taskId); Store.log(me().id,t.id,"version",`산출물 v${a.ver} 업로드`);
@@ -3208,7 +3244,7 @@ function docToolbarHtml(){
     <span class="doc-tb-sep"></span>
     ${btn("insertUnorderedList","","• 목록","글머리 목록")}${btn("insertOrderedList","","1. 목록","번호 목록")}${btn("_checklist","","☑ 체크","체크리스트")}
     <span class="doc-tb-sep"></span>
-    ${btn("formatBlock","blockquote","❝ 인용","인용문")}${btn("_hr","","─ 구분","구분선")}${btn("_table","","▦ 표","표 삽입")}
+    ${btn("formatBlock","blockquote","❝ 인용","인용문")}${btn("_hr","","─ 구분","구분선")}${btn("_table","","▦ 표","표 삽입")}${btn("_toggle","","▸ 토글","접기/펴기 블록")}
     <span class="doc-tb-sep"></span>
     ${btn("_link","","🔗 링크","링크")}${btn("_image","","🖼 이미지","이미지 삽입")}
     <span class="doc-tb-sep"></span>
@@ -3238,12 +3274,24 @@ function wireDocEditor(){
     ["doc_brand","doc_task"].forEach(fid=>{ const el=document.getElementById(fid); if(el) el.onchange=()=>saveDocNow(); });
     const tagEl=document.getElementById("doc_tags"); if(tagEl) tagEl.addEventListener("input",scheduleDocSave);
   }
+  // 토글 접기/펴기 (읽기 전용에서도 동작) — 헤더 화살표/제목 영역 클릭 시
+  if(body){
+    body.addEventListener("click",e=>{
+      const h=e.target.closest(".doc-toggle-h"); if(!h) return;
+      if(e.target.closest(".doc-toggle-t")) return;  // 제목 글자 편집 중엔 접힘 토글 안 함
+      const tg=h.closest(".doc-toggle"); if(!tg) return;
+      const opened=tg.getAttribute("open")==="true";
+      tg.setAttribute("open", opened?"false":"true");
+      if(canEdit) scheduleDocSave();
+    });
+  }
 }
 function docExec(cmd,val,body){
   body && body.focus();
   if(cmd==="_hr"){ document.execCommand("insertHorizontalRule"); return; }
   if(cmd==="_checklist"){ docInsertChecklist(); return; }
   if(cmd==="_table"){ docInsertTable(); return; }
+  if(cmd==="_toggle"){ docInsertToggle(); return; }
   if(cmd==="_link"){ const u=prompt("링크 URL을 입력하세요","https://"); if(u) document.execCommand("createLink",false,u); return; }
   if(cmd==="_image"){ docInsertImage(body); return; }
   if(cmd==="formatBlock"){ document.execCommand("formatBlock",false,val); return; }
@@ -3259,6 +3307,14 @@ function docInsertTable(){
   for(let i=0;i<r;i++){ h+="<tr>"; for(let j=0;j<c;j++){ h+= i===0?"<th>제목</th>":"<td>내용</td>"; } h+="</tr>"; }
   h+="</tbody></table><p><br></p>";
   document.execCommand("insertHTML",false,h);
+}
+function docInsertToggle(){
+  const title=(prompt("토글 제목을 입력하세요","토글 제목")||"토글 제목");
+  const html=`<div class="doc-toggle" open="true">`+
+    `<div class="doc-toggle-h" contenteditable="false"><span class="doc-toggle-arr">▸</span><span class="doc-toggle-t" contenteditable="true">${docEscHtml(title)}</span></div>`+
+    `<div class="doc-toggle-b"><p>접히는 내용을 여기에 작성하세요.</p></div>`+
+    `</div><p><br></p>`;
+  document.execCommand("insertHTML",false,html);
 }
 async function docInsertImage(body){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
