@@ -646,6 +646,15 @@
   .doc-embed.doc-sel{outline:2px solid var(--primary);outline-offset:3px}
   .doc-embed-frame{position:relative;width:100%;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000}
   .doc-embed-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  /* 대시보드 개인 메모 슬롯 */
+  .memo-slot .card-h .hint{margin-left:8px}
+  .memo-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  .memo-chip{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:5px;min-height:78px}
+  .memo-chip:hover{border-color:var(--line-strong);background:var(--surface)}
+  .memo-chip-t{font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .memo-chip-p{font-size:11.5px;color:var(--muted);line-height:1.5;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .memo-chip-d{font-size:10.5px;color:var(--faint)}
+  .memo-empty{font-size:12.5px;color:var(--muted);padding:14px 6px;text-align:center}
 </style>
 </head>
 <body>
@@ -1724,7 +1733,8 @@ function dashExec(){
       <div class="card-b">${waiting.length?taskList(waiting):C.empty("✅","승인 대기 없음","팀장이 올린 보고가 여기에 표시됩니다.")}</div></div>
     <div class="card"><div class="card-h"><h3>이번주 KPI 진행률</h3></div>
       <div class="card-b">${kpiTasks.length?kpiTasks.map(t=>`<div style="margin-bottom:13px"><div style="font-weight:600;font-size:12.5px;margin-bottom:6px">${esc(t.title)}</div>${t.kpis.map(C.kpibar).join("")}</div>`).join(""):C.empty("📊","성과 데이터 없음","성과가 입력되면 진행률이 표시됩니다.")}</div></div>
-  </div>`;
+  </div>
+  ${memoSlot()}`;
 }
 function dashManager(){
   const tasks=Store.db.tasks;
@@ -1746,7 +1756,8 @@ function dashManager(){
     <div class="card"><div class="card-h"><h3>진행중 업무</h3></div>
       <div class="card-b">${active.length?taskList(active):C.empty("🗂","진행중 없음","")}</div></div>
   </div>
-  ${workloadCard(tasks,"연·월별 업무 건수 (전체)")}`;
+  ${workloadCard(tasks,"연·월별 업무 건수 (전체)")}
+  ${memoSlot()}`;
 }
 function dashMember(){
   const u=me(); const mine=Store.db.tasks.filter(t=>t.ownerId===u.id);
@@ -1759,6 +1770,7 @@ function dashMember(){
   return `
   ${ph("내 업무","오늘 할 일과 마감을 확인하세요.", `<button class="btn btn-primary btn-sm" data-act="new-task">+ 새 업무</button>`)}
   ${myTodayCard()}
+  ${memoSlot()}
   <div class="grid g4" style="margin-bottom:18px">
     ${C.stat({l:"오늘 할 일",v:todo.length,accent:true})}
     ${C.stat({l:"오늘 마감",v:today.length})}
@@ -1826,6 +1838,27 @@ function myTodayCard(){
       <div class="mt-col"><div class="mt-h">💬 받은 피드백</div>${fbHtml}</div>
       <div class="mt-col"><div class="mt-h">🏖 연차 · 🧾 지출</div>${leaveHtml}${expHtml}</div>
     </div>
+  </div>`;
+}
+
+/* 대시보드 상단 개인 메모 슬롯 — 나만 보는 메모를 카드로 관리 */
+function memoSlot(){
+  if(!DOCS_OK) return "";   // docs 테이블 없으면 조용히 숨김
+  const memos=Store.memosOf(me().id).slice(0,6);
+  const cards = memos.length
+    ? `<div class="memo-slot-grid">${memos.map(d=>{
+        const preview=stripHtml(d.body).slice(0,60);
+        return `<div class="memo-chip" data-act="doc-open" data-id="${d.id}">
+          <div class="memo-chip-t">${docEscHtml(d.title||"제목 없는 메모")}</div>
+          <div class="memo-chip-p">${docEscHtml(preview)||"<span style='color:var(--faint)'>내용 없음</span>"}</div>
+          <div class="memo-chip-d">${fmtDay(d.updatedAt)}</div>
+        </div>`;
+      }).join("")}</div>`
+    : `<div class="memo-empty">아직 메모가 없어요. ‘＋ 새 메모’로 나만 보는 메모를 남겨보세요.</div>`;
+  return `<div class="card memo-slot" style="margin-bottom:18px">
+    <div class="card-h"><h3>📝 메모</h3><span class="hint">나만 보이는 개인 메모</span>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" data-act="memo-new">＋ 새 메모</button></div>
+    <div class="card-b">${cards}</div>
   </div>`;
 }
 
@@ -3260,28 +3293,6 @@ function viewDocs(){
 }
 function stripHtml(html){ const t=document.createElement("div"); t.innerHTML=html||""; return (t.textContent||t.innerText||"").replace(/\s+/g," ").trim(); }
 
-/* ---- 개인 메모 목록 (본인만 열람) ---- */
-function viewMemos(){
-  if(!DOCS_OK) return `${ph("메모","나만 보는 개인 메모입니다.")}
-    <div class="card"><div class="card-b">${C.empty("📝","기능 준비 필요","supabase_docs.sql 과 supabase_docs_memo.sql 을 실행한 뒤 새로고침하세요.")}</div></div>`;
-  const q=(session.memoQuery||"").trim().toLowerCase();
-  let list=Store.memosOf(me().id);
-  if(q) list=list.filter(d=>(d.title||"").toLowerCase().includes(q)||stripHtml(d.body).toLowerCase().includes(q));
-  const right=`<button class="btn btn-primary btn-sm" data-act="memo-new">＋ 새 메모</button>`;
-  const cards=list.length?`<div class="doc-grid">${list.map(d=>{
-    const preview=stripHtml(d.body).slice(0,110);
-    return `<div class="doc-card" data-act="doc-open" data-id="${d.id}">
-      <div class="doc-card-t">${docEscHtml(d.title||"제목 없는 메모")}</div>
-      <div class="doc-card-p">${docEscHtml(preview)||"<span style='color:var(--faint)'>내용 없음</span>"}</div>
-      <div class="doc-card-m"><span class="tag" style="border-color:var(--brass);color:var(--brass)">🔒 나만</span><span class="doc-card-meta">${fmtDay(d.updatedAt)}</span></div>
-    </div>`;
-  }).join("")}</div>`
-    : C.empty("📝", q?"검색 결과가 없습니다":"아직 메모가 없습니다", q?"다른 검색어를 시도해 보세요.":"‘＋ 새 메모’로 나만 보는 메모를 작성하세요.");
-  return `${ph("메모","나만 보는 개인 메모입니다. 서식·표·체크리스트·이미지를 지원해요. (다른 사람에게 보이지 않습니다)",right)}
-    <div class="toolbar"><input class="search" id="memo_q" type="text" placeholder="🔍 내 메모 검색" value="${esc(session.memoQuery||"")}"></div>
-    ${cards}`;
-}
-
 /* ---- 문서 에디터 ---- */
 function viewDocEditor(id){
   const d=Store.doc(id); if(!d) return `<div class="card"><div class="card-b">${C.empty("❓","문서를 찾을 수 없습니다","목록으로 돌아가세요.")}</div></div>`;
@@ -3293,7 +3304,7 @@ function viewDocEditor(id){
   const brands=Store.db.brands.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   const myTasks=(role==="manager"||role==="executive")?Store.db.tasks:Store.db.tasks.filter(t=>t.ownerId===me().id||Store.membersOf(t.id).some(m=>m.userId===me().id));
   const au=Store.user(d.authorId), up=Store.user(d.updatedBy);
-  const backView=isMemo?"memo":"docs", backLabel=isMemo?"← 메모 목록":"← 기획안 목록";
+  const backView=isMemo?"dashboard":"docs", backLabel=isMemo?"← 대시보드":"← 기획안 목록";
   return `
   <div class="doc-editor-top">
     <span class="eb"><span style="cursor:pointer" data-act="goto" data-view="${backView}">${backLabel}</span></span>
@@ -4927,7 +4938,6 @@ function navConfig(){
   base.push({view:"generator",ic:"🎨",label:"생성기"});
   base.push({view:"blog",ic:"✍️",label:"블로그 원고"});
   base.push({view:"docs",ic:"📄",label:"기획안"});
-  base.push({view:"memo",ic:"📝",label:"메모"});
   base.push({view:"spelldict",ic:"📗",label:"교정 사전"});
   base.push({view:"ads",ic:"📈",label:"광고 분석"});
   base.push({view:"content",ic:"📱",label:"콘텐츠 성과"});
@@ -4981,7 +4991,6 @@ function render(){
   else if(v==="generator") html=viewGenerator();
   else if(v==="blog") html=viewBlogStudio();
   else if(v==="docs") html=viewDocs();
-  else if(v==="memo") html=viewMemos();
   else if(v==="doc") html=viewDocEditor(session.route.id);
   else if(v==="spelldict") html=viewSpellDict();
   else if(v==="ads") html=viewAds();
@@ -5001,7 +5010,6 @@ function render(){
   if(v==="blog") wireBlogStudio();
   if(v==="doc") wireDocEditor();
   if(v==="docs"){ const dq=document.getElementById("doc_q"); if(dq){ dq.oninput=()=>{ session.docQuery=dq.value; clearTimeout(window.__docSearchT); window.__docSearchT=setTimeout(render,250); }; } }
-  if(v==="memo"){ const mq=document.getElementById("memo_q"); if(mq){ mq.oninput=()=>{ session.memoQuery=mq.value; clearTimeout(window.__memoSearchT); window.__memoSearchT=setTimeout(render,250); }; } }
   // 필터 입력 연결 (업무 뷰)
   if(v==="tasks"){
     const q=document.getElementById("f_q"); if(q){q.oninput=()=>{session.filters.q=q.value;updateTaskListOnly();};}
@@ -5082,7 +5090,7 @@ function restoreRouteFromHash(profile){
   let allowed;
   try{ allowed=new Set(navConfig().map(n=>n.view)); }catch(e){ allowed=new Set(["dashboard"]); }
   // 메뉴엔 없지만 접근 가능한 상세/보조 화면도 허용
-  ["generator","blog","docs","memo","spelldict"].forEach(x=>allowed.add(x));
+  ["generator","blog","docs","spelldict"].forEach(x=>allowed.add(x));
   if(allowed.has(view)) return {view};
   return {view:"dashboard"};
 }
