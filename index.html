@@ -6,6 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -26,6 +27,7 @@
     --radius:13px; --shadow:0 1px 2px rgba(20,24,30,.04),0 6px 20px -14px rgba(20,24,30,.3);
     --shadow-lg:0 24px 60px -20px rgba(20,24,30,.4);
     --fd:"Fraunces",Georgia,serif; --fu:"Inter",system-ui,sans-serif; --fm:"JetBrains Mono",ui-monospace,monospace;
+    --fp:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   }
   *{box-sizing:border-box} html,body{margin:0}
   body{font-family:var(--fu);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.5;font-size:14px}
@@ -592,23 +594,31 @@
   .doc-savestate{font-size:12px;color:var(--muted)}
   .doc-editor-card .card-b{padding:22px 26px}
   @media(max-width:640px){ .doc-editor-card .card-b{padding:16px 14px} }
-  .doc-title-in{width:100%;border:0;outline:none;background:transparent;font-family:var(--fd);font-weight:700;font-size:26px;color:var(--ink);padding:0 0 10px}
+  .doc-title-in{width:100%;border:0;outline:none;background:transparent;font-family:var(--fp);font-weight:700;font-size:26px;color:var(--ink);padding:0 0 10px}
   .doc-title-in::placeholder{color:var(--faint)}
   .doc-meta-row{display:flex;gap:14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:14px}
   .doc-meta-row label{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
   .doc-meta-row select,.doc-meta-row input{font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font-family:inherit}
-  .doc-toolbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:3px;padding:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
+  .doc-toolbar{position:sticky;top:46px;z-index:20;display:flex;flex-wrap:wrap;gap:3px;padding:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
   .doc-tb-btn{border:0;background:transparent;color:var(--ink-soft);font-size:13px;padding:6px 9px;border-radius:7px;cursor:pointer;line-height:1;min-height:32px}
   .doc-tb-btn:hover{background:var(--surface);color:var(--ink)}
   .doc-tb-sep{width:1px;background:var(--line);margin:2px 4px}
-  .doc-body{min-height:400px;outline:none;font-size:15px;line-height:1.75;color:var(--ink)}
+  .doc-body{min-height:400px;outline:none;font-size:15px;line-height:1.75;color:var(--ink);font-family:var(--fp)}
   .doc-body:focus{outline:none}
-  .doc-body h1{font-size:24px;font-weight:700;margin:18px 0 8px;font-family:var(--fd)}
-  .doc-body h2{font-size:20px;font-weight:700;margin:16px 0 7px;font-family:var(--fd)}
-  .doc-body h3{font-size:17px;font-weight:600;margin:14px 0 6px}
+  .doc-body h1{font-size:24px;font-weight:700;margin:18px 0 8px;font-family:var(--fp)}
+  .doc-body h2{font-size:20px;font-weight:700;margin:16px 0 7px;font-family:var(--fp)}
+  .doc-body h3{font-size:17px;font-weight:600;margin:14px 0 6px;font-family:var(--fp)}
   .doc-body p{margin:8px 0}
   .doc-body ul,.doc-body ol{margin:8px 0;padding-left:26px}
   .doc-body li{margin:3px 0}
+  /* 중첩 목록: 단계별 여백 + 불릿 모양 변화로 들여쓰기 구분 */
+  .doc-body ul ul,.doc-body ul ol,.doc-body ol ul,.doc-body ol ol{margin:3px 0}
+  .doc-body ul{list-style-type:disc}
+  .doc-body ul ul{list-style-type:circle}
+  .doc-body ul ul ul{list-style-type:square}
+  .doc-body ol{list-style-type:decimal}
+  .doc-body ol ol{list-style-type:lower-alpha}
+  .doc-body ol ol ol{list-style-type:lower-roman}
   .doc-body blockquote{border-left:3px solid var(--primary);margin:12px 0;padding:4px 0 4px 16px;color:var(--ink-soft);background:var(--surface-2);border-radius:0 8px 8px 0}
   .doc-body hr{border:0;border-top:1px solid var(--line);margin:18px 0}
   .doc-body img{max-width:100%;border-radius:8px}
@@ -3457,7 +3467,7 @@ function docToolbarHtml(){
     <span class="doc-tb-sep"></span>
     ${btn("bold","","<b>B</b>","굵게")}${btn("italic","","<i>I</i>","기울임")}${btn("underline","","<u>U</u>","밑줄")}${btn("strikeThrough","","<s>S</s>","취소선")}
     <span class="doc-tb-sep"></span>
-    ${btn("insertUnorderedList","","• 목록","글머리 목록")}${btn("insertOrderedList","","1. 목록","번호 목록")}${btn("_checklist","","☑ 체크","체크리스트")}
+    ${btn("insertUnorderedList","","• 목록","글머리 목록")}${btn("insertOrderedList","","1. 목록","번호 목록")}${btn("_checklist","","☑ 체크","체크리스트")}${btn("_indent","","→| 들여쓰기","들여쓰기 (Tab)")}${btn("_outdent","","|← 내어쓰기","내어쓰기 (Shift+Tab)")}
     <span class="doc-tb-sep"></span>
     ${btn("formatBlock","blockquote","❝ 인용","인용문")}${btn("_hr","","─ 구분","구분선")}${btn("_table","","▦ 표","표 삽입")}${btn("_toggle","","▸ 토글","접기/펴기 블록")}
     <span class="doc-tb-sep"></span>
@@ -3527,6 +3537,12 @@ function wireDocEditor(){
         const sel=body.querySelector(".doc-sel");
         if(sel){ e.preventDefault(); const wrap=sel.closest(".doc-embed")||sel; wrap.remove(); docRemoveImageTools(); scheduleDocSave(); }
       }
+      // Tab: 들여쓰기 / Shift+Tab: 내어쓰기 (목록 안 목록 만들기)
+      if(e.key==="Tab"){
+        e.preventDefault();
+        document.execCommand(e.shiftKey?"outdent":"indent");
+        scheduleDocSave();
+      }
     });
     // 붙여넣기(Ctrl+V) 이미지: 삭제·리사이즈 가능하도록 스타일 클래스 부여
     body.addEventListener("paste",e=>{
@@ -3573,6 +3589,8 @@ function docExec(cmd,val,body){
   }
   if(cmd==="_image"){ docInsertImage(body); return; }
   if(cmd==="_embed"){ docInsertEmbed(); return; }
+  if(cmd==="_indent"){ document.execCommand("indent"); return; }      // 들여쓰기(목록 안 목록)
+  if(cmd==="_outdent"){ document.execCommand("outdent"); return; }    // 내어쓰기
   if(cmd==="formatBlock"){ document.execCommand("formatBlock",false,val); return; }
   document.execCommand(cmd,false,val||null);
 }
