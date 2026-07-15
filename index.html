@@ -5109,12 +5109,13 @@ function renderSide(){
     }).join("");
 }
 function renderBar(){
-  const u=me();
+  const u=me(); if(!u) return;   // 로그인/로딩 완료 전 호출 시 안전하게 건너뜀
   document.getElementById("who").innerHTML=`<b>${esc(u.name)}</b> · ${({member:"실무자",manager:"팀장",executive:"대표",viewer:"뷰어",partner:"파트너"})[u.role]||u.role}`;
   const f=document.getElementById("aiFlag"); f.textContent=AiService.live()?((AI.mode==="server"?"OpenAI(서버) · ":"OpenAI · ")+AI.model):"AI 시뮬레이터"; f.classList.toggle("live",AiService.live());
   updateNotifChrome();
 }
 function render(){
+  if(!me()) return;   // 로그인/데이터 로딩 완료 전에는 렌더하지 않음 (me() null 방지)
   if(me() && me().role==="partner" && session.route.view!=="generator") session.route={view:"generator"};
   // 현재 화면을 URL 해시에 기록 → 새로고침 시 같은 화면 복원 (로그인 상태에서만)
   if(me() && session.route && session.route.view){
@@ -5413,6 +5414,8 @@ document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el)return;
   const fn=Actions[el.dataset.act]; if(!fn)return;
   e.preventDefault();
+  // 로그인·데이터 로딩이 끝나기 전 클릭은 무시 (me() null 로 인한 오류 방지)
+  if(!me()){ return; }
   // 파트너 계정: 생성기 전용 — goto(메뉴 이동) 외 모든 동작 차단
   if(me() && me().role==="partner" && !PARTNER_ALLOWED.has(el.dataset.act)){ toast("파트너 계정은 생성기만 이용할 수 있습니다"); return; }
   // 읽기 전용(모니터링) 계정: 조회·확대·다운로드 외 모든 조작 차단
