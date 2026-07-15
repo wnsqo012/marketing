@@ -1172,6 +1172,8 @@ const Store = (()=>{
     docsAll:()=>db.docs.filter(d=>(d.kind||"doc")!=="memo").slice().sort((a,b)=>b.updatedAt-a.updatedAt),
     doc:id=>db.docs.find(d=>d.id===id),
     docsOfTask:tid=>db.docs.filter(d=>d.taskId===tid&&(d.kind||"doc")!=="memo").sort((a,b)=>b.updatedAt-a.updatedAt),
+    // 검토 요청 가능 여부: 산출물이 있거나, 연결된 기획안(docs)이 있으면 true
+    hasDeliverable:tid=>db.assets.some(a=>a.taskId===tid) || (DOCS_OK && db.docs.some(d=>d.taskId===tid&&(d.kind||"doc")!=="memo")),
     memosOf:uid=>db.docs.filter(d=>d.kind==="memo"&&d.authorId===uid).sort((a,b)=>b.updatedAt-a.updatedAt),
     async addDoc(d){ const {error}=await sb.from("docs").insert(Maps.doc.to(d)); if(error){toast("문서 생성 실패: "+error.message.slice(0,60));return false;} db.docs.push(d); return true; },
     async updateDoc(id,patch,apply){ patch.updated_at=iso(Date.now()); const {error}=await sb.from("docs").update(patch).eq("id",id); if(error){toast("저장 실패: "+error.message.slice(0,60));return false;} const d=db.docs.find(x=>x.id===id); if(d&&apply) apply(d); return true; },
@@ -2273,7 +2275,7 @@ function actionPanel(t,role,lastReject){
     else if(s==="producing"){ if(allDone&&multi) html+=completionBlock(t); html+=reviewBtn("팀장 검토 요청 →","submit-review"); }
     else if(s==="revision"){
       if(lastReject) html+=`<div class="callout"><b>반려됨</b> [${esc(lastReject.cat||'')}] ${esc(lastReject.detail||'')}</div>`;
-      html+=`<div class="hint" style="margin:8px 0 10px">위 사유를 반영해 산출물을 수정·재첨부(‘+ 산출물’ / ‘+ 버전’)한 뒤 다시 검토를 요청하세요.</div>`;
+      html+=`<div class="hint" style="margin:8px 0 10px">위 사유를 반영해 산출물을 수정·재첨부(‘+ 산출물’ / ‘+ 버전’)하거나 연결된 기획안을 수정한 뒤 다시 검토를 요청하세요.</div>`;
       if(allDone&&multi) html+=completionBlock(t); html+=reviewBtn("↻ 수정 완료 — 재검토 요청","resubmit-review");
     }
     else if(s==="approved"||s==="exec_review"){
@@ -2592,14 +2594,14 @@ const Actions={
   async advance(el){ const t=Store.task(el.dataset.id); if(await setStatus(t,"producing","제작을 시작했습니다")){ toast("제작중으로 변경"); render(); } },
   async "submit-review"(el){ const t=Store.task(el.dataset.id);
     if(!Store.allDone(t.id)){ toast("공동 담당자 전원이 완료 체크를 해야 검토 요청할 수 있습니다"); return; }
-    if(!Store.assetsOf(t.id).length){toast("산출물을 먼저 등록하세요");return;}
+    if(!Store.hasDeliverable(t.id)){toast("산출물 또는 연결된 기획안을 먼저 등록하세요");return;}
     if(await setStatus(t,"manager_review","팀장 검토를 요청했습니다")){
       Notify.sendReviewEvent(t.id,"new");
       toast("팀장 검토 요청 완료"); render(); }
     else toast("요청에 실패했습니다 — supabase_task_members_update.sql 실행 여부(권한)를 확인하세요"); },
   async "resubmit-review"(el){ const t=Store.task(el.dataset.id);
     if(!Store.allDone(t.id)){ toast("공동 담당자 전원이 완료 체크를 해야 재검토 요청할 수 있습니다"); return; }
-    if(!Store.assetsOf(t.id).length){toast("산출물을 먼저 등록하세요");return;}
+    if(!Store.hasDeliverable(t.id)){toast("산출물 또는 연결된 기획안을 먼저 등록하세요");return;}
     if(await setStatus(t,"manager_review","수정 후 재검토를 요청했습니다")){
       Notify.sendReviewEvent(t.id,"resubmit");
       toast("재검토 요청 완료"); render(); }
