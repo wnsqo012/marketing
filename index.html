@@ -3433,10 +3433,12 @@ function viewDocEditor(id){
   const myTasks=(role==="manager"||role==="executive")?Store.db.tasks:Store.db.tasks.filter(t=>t.ownerId===me().id||Store.membersOf(t.id).some(m=>m.userId===me().id));
   const au=Store.user(d.authorId), up=Store.user(d.updatedBy);
   const backView=isMemo?"dashboard":"docs", backLabel=isMemo?"← 대시보드":"← 기획안 목록";
+  const linkedTask=(!isMemo && d.taskId)?Store.task(d.taskId):null;   // 매칭된 업무
   return `
   <div class="doc-editor-top">
     <span class="eb"><span style="cursor:pointer" data-act="goto" data-view="${backView}">${backLabel}</span></span>
     ${isMemo?`<span class="tag" style="border-color:var(--brass);color:var(--brass);margin-left:6px">🔒 나만 보는 메모</span>`:""}
+    ${linkedTask?`<button class="btn btn-ghost btn-sm" data-act="open-task" data-id="${linkedTask.id}" title="이 기획안과 연결된 업무로 이동" style="margin-left:8px">🔗 연결 업무: ${esc(linkedTask.title.length>18?linkedTask.title.slice(0,18)+"…":linkedTask.title)}</button>`:""}
     <span style="flex:1"></span>
     ${canEdit?`<span class="doc-savestate" id="doc_savestate">저장됨</span>`:`<span class="tag">읽기 전용</span>`}
     ${isMemo?"":`<button class="btn btn-ghost btn-sm" data-act="doc-copylink" data-id="${d.id}">🔗 링크 복사</button>`}
