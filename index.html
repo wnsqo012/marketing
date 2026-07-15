@@ -655,6 +655,16 @@
   .doc-embed.doc-sel{outline:2px solid var(--primary);outline-offset:3px}
   .doc-embed-frame{position:relative;width:100%;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000}
   .doc-embed-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  /* 기획안 첨부 파일 카드 (CSV·엑셀·문서 등) */
+  .doc-file{margin:10px 0}
+  .doc-file.doc-sel{outline:2px solid var(--primary);outline-offset:3px;border-radius:10px}
+  .doc-file a{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);text-decoration:none;color:var(--ink);transition:.12s}
+  .doc-file a:hover{border-color:var(--primary);background:var(--surface)}
+  .doc-file-ic{font-size:22px;flex-shrink:0}
+  .doc-file-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+  .doc-file-name{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .doc-file-meta{font-size:11px;color:var(--muted);font-family:var(--fm)}
+  .doc-file-dl{font-size:11.5px;color:var(--primary);font-weight:600;flex-shrink:0;border:1px solid var(--primary);border-radius:6px;padding:4px 10px}
   /* 대시보드 개인 메모 슬롯 */
   .memo-slot .card-h .hint{margin-left:8px}
   .memo-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
@@ -2919,7 +2929,7 @@ function assetFormBody(){
       <label class="chip"><input type="radio" name="assrc" value="file" checked><span>파일 업로드</span></label>
       <label class="chip"><input type="radio" name="assrc" value="link"><span>URL 링크</span></label>
       <label class="chip"><input type="radio" name="assrc" value="text"><span>텍스트</span></label></div></label>
-    <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)<br>여러 개를 올리면 <b>PC 파일명 순서</b>로 정렬되며(아래에서 드래그로 변경 가능), <b>그 순서대로 등록·표시</b>됩니다. <b>카드뉴스</b>는 같은 순서로 한 묶음이 됩니다.</div><div id="as_filelist" class="dnd-list"></div></div>
+    <div id="as_fileWrap" style="margin-bottom:14px"><input type="file" id="as_file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.csv,.tsv,.hwp,.hwpx,.txt,.zip,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"><div class="hint" style="margin-top:6px">이미지 여러 장 선택 가능 · 영상(mp4·mov 등)·PDF·PPT·문서 지원 (개당 50MB 이하)<br>여러 개를 올리면 <b>PC 파일명 순서</b>로 정렬되며(아래에서 드래그로 변경 가능), <b>그 순서대로 등록·표시</b>됩니다. <b>카드뉴스</b>는 같은 순서로 한 묶음이 됩니다.</div><div id="as_filelist" class="dnd-list"></div></div>
     <label class="fld" id="as_linkWrap" style="display:none"><span class="lab">파일 링크 <span class="hint">한 줄에 하나씩 · 최대 10개</span></span><textarea id="as_links" rows="4" placeholder="https://drive.google.com/...&#10;https://youtu.be/...&#10;https://..."></textarea></label>
     <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="예) 광고 카피, 콘텐츠 본문, 게시물 문구 등을 입력하세요"></textarea></label>
     ${ASSET_PHASES_OK?`<div id="as_phaseWrap" style="display:none;border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
@@ -3108,7 +3118,7 @@ function openAssetEditModal(id){
       <label class="chip"><input type="radio" name="assrc" value="text" ${cur==="text"?"checked":""}><span>텍스트</span></label></div></label>
     <div id="as_fileWrap" style="margin-bottom:14px;display:none">
       ${a.fileData?`<div class="hint" style="margin-bottom:6px">현재 파일: <b>${esc(a.fileName||"첨부됨")}</b> — 새 파일을 선택하면 교체되고, 선택하지 않으면 그대로 유지됩니다.</div>`:`<div class="hint" style="margin-bottom:6px">교체할 파일을 선택하세요.</div>`}
-      <input type="file" id="as_file" accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip">
+      <input type="file" id="as_file" accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.csv,.tsv,.hwp,.hwpx,.txt,.zip,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
       <div class="hint" style="margin-top:6px">이미지·영상·PDF·문서 (50MB 이하)</div></div>
     <label class="fld" id="as_linkWrap" style="display:none"><span class="lab">URL 링크</span><textarea id="as_links" rows="3" placeholder="https://...">${esc(a.link||"")}</textarea></label>
     <label class="fld" id="as_bodyWrap" style="display:none"><span class="lab">본문 텍스트 <span class="hint">카피·문구·콘텐츠 내용 등</span></span><textarea id="as_body" rows="6" placeholder="텍스트 내용">${esc(a.body||"")}</textarea></label>
@@ -3475,7 +3485,7 @@ function docToolbarHtml(){
     <span class="doc-tb-sep"></span>
     ${btn("formatBlock","blockquote","❝ 인용","인용문")}${btn("_hr","","─ 구분","구분선")}${btn("_table","","▦ 표","표 삽입")}${btn("_toggle","","▸ 토글","접기/펴기 블록")}
     <span class="doc-tb-sep"></span>
-    ${btn("_link","","🔗 링크","링크")}${btn("_image","","🖼 이미지","이미지 삽입")}${btn("_embed","","▶ 임베드","유튜브·영상 임베드")}
+    ${btn("_link","","🔗 링크","링크")}${btn("_image","","🖼 이미지","이미지 삽입")}${btn("_file","","📎 파일","CSV·엑셀·문서 첨부")}${btn("_embed","","▶ 임베드","유튜브·영상 임베드")}
     <span class="doc-tb-sep"></span>
     ${btn("removeFormat","","✕ 서식제거","서식 지우기")}
   </div>`;
@@ -3592,6 +3602,7 @@ function docExec(cmd,val,body){
     return;
   }
   if(cmd==="_image"){ docInsertImage(body); return; }
+  if(cmd==="_file"){ docInsertFile(body); return; }
   if(cmd==="_embed"){ docInsertEmbed(); return; }
   if(cmd==="_indent"){ document.execCommand("indent"); return; }      // 들여쓰기(목록 안 목록)
   if(cmd==="_outdent"){ document.execCommand("outdent"); return; }    // 내어쓰기
@@ -3636,6 +3647,25 @@ function docInsertEmbed(){
   const html=`<div class="doc-embed" contenteditable="false"><div class="doc-embed-frame"><iframe src="${esc(embedSrc)}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe></div></div><p><br></p>`;
   document.execCommand("insertHTML",false,html);
   scheduleDocSave();
+}
+async function docInsertFile(body){
+  const inp=document.createElement("input"); inp.type="file";
+  inp.accept="image/*,video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.csv,.tsv,.hwp,.hwpx,.txt,.zip,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
+  inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return;
+    toast("파일 업로드 중…");
+    const att=await uploadOne(f);
+    if(att&&att.fileData){
+      body.focus();
+      const ext=(f.name.split(".").pop()||"").toUpperCase();
+      const sizeKB=Math.round(f.size/1024);
+      const sizeTxt=sizeKB>1024?(Math.round(sizeKB/102.4)/10)+"MB":sizeKB+"KB";
+      // 다운로드 가능한 파일 카드 (본문에 삽입, contenteditable=false로 블록 단위 선택·삭제)
+      const card=`<div class="doc-file" contenteditable="false"><a href="${esc(att.fileData)}" download="${esc(f.name)}" target="_blank" rel="noopener"><span class="doc-file-ic">📎</span><span class="doc-file-info"><span class="doc-file-name">${esc(f.name)}</span><span class="doc-file-meta">${esc(ext)} · ${sizeTxt}</span></span><span class="doc-file-dl">다운로드</span></a></div><p><br></p>`;
+      document.execCommand("insertHTML",false,card);
+      scheduleDocSave();
+    }
+  };
+  inp.click();
 }
 async function docInsertImage(body){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
