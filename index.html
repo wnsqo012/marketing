@@ -5507,8 +5507,8 @@ async function afterAuth(){
 }
 // ===== Supabase Realtime: 업무 변경 시 새로고침 없이 화면/카운트 갱신 =====
 // ===== PC 브라우저 알림(우측 하단 팝업) =====
-const NOTIF_LABEL={task_created:"새 업무",task_created_me:"내 업무 등록",review_requested:"검토 요청",review_resubmitted:"재검토 요청",review_submitted:"검토 요청 접수",review_resubmitted_me:"재검토 접수",approved:"승인됨",rejected:"반려됨",exec_decision:"대표 결정",post_created:"새 공지·글",comment_added:"새 댓글",due_soon:"마감 임박",overdue:"마감 초과",meeting_invited:"회의 참석 요청",coreview_requested:"검수 요청",coreview_done:"검수 완료"};
-function notifBodyText(r){ if(r.type==="meeting_invited") return r.message||"회의에 참석자로 지정되었습니다"; if(r.type==="coreview_requested"||r.type==="coreview_done") return r.message||"공동검수 알림"; const t=r.task_id?Store.task(r.task_id):null;
+const NOTIF_LABEL={task_created:"새 업무",task_created_me:"내 업무 등록",review_requested:"검토 요청",review_resubmitted:"재검토 요청",review_submitted:"검토 요청 접수",review_resubmitted_me:"재검토 접수",approved:"승인됨",rejected:"반려됨",exec_decision:"대표 결정",post_created:"새 공지·글",comment_added:"새 댓글",due_soon:"마감 임박",overdue:"마감 초과",meeting_invited:"회의 참석 요청",coreview_requested:"검수 요청",coreview_done:"검수 완료",sheet_update:"📊 시트 업데이트"};
+function notifBodyText(r){ if(r.type==="sheet_update") return r.message||"구글 시트에 새 내용이 추가되었습니다"; if(r.type==="meeting_invited") return r.message||"회의에 참석자로 지정되었습니다"; if(r.type==="coreview_requested"||r.type==="coreview_done") return r.message||"공동검수 알림"; const t=r.task_id?Store.task(r.task_id):null;
   return (t?`[${t.title}] `:"")+(r.type==="approved"?"승인되었습니다":r.type==="rejected"?"반려되었습니다":(r.type==="review_requested"||r.type==="review_resubmitted")?"검토가 필요합니다":r.type==="comment_added"?"새 댓글이 있습니다":r.type==="post_created"?"새 글이 등록되었습니다":r.type==="task_created"?"새 업무가 등록되었습니다":"확인해 주세요"); }
 // ===== 인앱 알림센터 (권한 불필요) =====
 const InApp={
