@@ -3556,7 +3556,9 @@ function wireDocEditor(){
       if(img){ img.classList.add("doc-sel"); docShowImageTools(img,body); return; }
       if(editableInner){ return; }   // 텍스트 편집 우선 — 블록 선택 안 함
       const block=e.target.closest(".doc-embed, .doc-table, .doc-toggle, hr");
-      if(block){ block.classList.add("doc-sel"); }
+      if(block){ block.classList.add("doc-sel");
+        if(block.matches("table.doc-table")){ block.setAttribute("draggable","true"); block.style.cursor="move"; }
+      }
     });
     // Delete/Backspace: 개체(블록) 선택 시 개체 삭제. 셀·토글 내부는 글자만 삭제(개체 보호).
     body.addEventListener("keydown",e=>{
@@ -3568,8 +3570,20 @@ function wireDocEditor(){
         if(sel && !cellCtx){
           e.preventDefault(); const wrap=sel.closest(".doc-embed")||sel; wrap.remove(); docRemoveImageTools(); scheduleDocSave();
         } else if(cellCtx){
+          const sel2=window.getSelection();
           const txt=(cellCtx.textContent||"").replace(/\u200b/g,"").trim();
-          if(txt===""){ e.preventDefault(); }
+          // 1) 빈 셀이면 차단
+          if(txt===""){ e.preventDefault(); return; }
+          // 2) 셀 맨 앞 Backspace → 이전 개체와 병합 차단
+          if(e.key==="Backspace" && sel2 && sel2.isCollapsed){
+            const r=sel2.getRangeAt(0).cloneRange(); r.selectNodeContents(cellCtx); r.setEnd(sel2.anchorNode, sel2.anchorOffset);
+            if(r.toString().replace(/\u200b/g,"").length===0){ e.preventDefault(); return; }
+          }
+          // 3) 셀 맨 끝 Delete → 다음 개체와 병합 차단
+          if(e.key==="Delete" && sel2 && sel2.isCollapsed){
+            const r=sel2.getRangeAt(0).cloneRange(); r.selectNodeContents(cellCtx); r.setStart(sel2.anchorNode, sel2.anchorOffset);
+            if(r.toString().replace(/\u200b/g,"").length===0){ e.preventDefault(); return; }
+          }
         }
       }
       // Tab: 들여쓰기 / Shift+Tab: 내어쓰기 (목록 안 목록 만들기)
@@ -3585,10 +3599,75 @@ function wireDocEditor(){
     });
     // 빈 곳 클릭 시 선택 해제
     body.addEventListener("blur",()=>docRemoveImageTools());
+    // 표 우클릭 메뉴: 열/행 추가·삭제
+    body.addEventListener("contextmenu",e=>{
+      const cell=e.target.closest("td, th"); const table=e.target.closest("table.doc-table");
+      if(!cell||!table) return;
+      e.preventDefault();
+      docShowTableMenu(e.pageX,e.pageY,cell,table,body);
+    });
+    // 표 위치 이동
+    body.addEventListener("dragstart",e=>{ const t=e.target.closest("table.doc-table"); if(t&&t.classList.contains("doc-sel")){ e.dataTransfer.setData("text/plain","__table__"); window.__dragTable=t; } });
+    body.addEventListener("dragover",e=>{ if(window.__dragTable) e.preventDefault(); });
+    body.addEventListener("drop",e=>{ if(!window.__dragTable) return; e.preventDefault();
+      const tgt=e.target.closest("p,div,table,li,h1,h2,h3,blockquote")||body;
+      if(tgt!==window.__dragTable && !window.__dragTable.contains(tgt)){ tgt.parentNode.insertBefore(window.__dragTable, tgt.nextSibling); scheduleDocSave(); }
+      window.__dragTable=null;
+    });
+  }
+}
+// 표 우클릭 컨텍스트 메뉴
+function docShowTableMenu(x,y,cell,table,body){
+  document.querySelectorAll(".doc-tablemenu").forEach(m=>m.remove());
+  const menu=document.createElement("div"); menu.className="doc-tablemenu"; menu.contentEditable="false";
+  menu.style.cssText=`position:absolute;left:${x}px;top:${y}px;z-index:9999;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:5px;min-width:170px;font-size:13px`;
+  const items=[
+    {label:"← 왼쪽에 열 추가",act:"colL"},
+    {label:"오른쪽에 열 추가 →",act:"colR"},
+    {label:"↑ 위에 행 추가",act:"rowU"},
+    {label:"아래에 행 추가 ↓",act:"rowD"},
+    {label:"— 이 열 삭제",act:"delCol"},
+    {label:"— 이 행 삭제",act:"delRow"},
+  ];
+  menu.innerHTML=items.map(it=>`<div class="doc-tablemenu-i" data-act="${it.act}" style="padding:7px 12px;border-radius:6px;cursor:pointer;white-space:nowrap">${it.label}</div>`).join("");
+  menu.querySelectorAll(".doc-tablemenu-i").forEach(el=>{
+    el.onmouseenter=()=>el.style.background="var(--surface-2)";
+    el.onmouseleave=()=>el.style.background="";
+    el.onclick=()=>{ docTableOp(el.dataset.act,cell,table); menu.remove(); scheduleDocSave&&scheduleDocSave(); };
+  });
+  document.body.appendChild(menu);
+  const rect=menu.getBoundingClientRect();
+  if(rect.right>window.innerWidth) menu.style.left=(x-rect.width)+"px";
+  if(rect.bottom>window.innerHeight) menu.style.top=(y-rect.height)+"px";
+  const close=ev=>{ if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener("mousedown",close); } };
+  setTimeout(()=>document.addEventListener("mousedown",close),0);
+}
+// 표 행/열 조작
+function docTableOp(act,cell,table){
+  const row=cell.parentElement, tbody=table.tBodies[0]||table;
+  const rows=[...tbody.rows];
+  const colIdx=[...row.cells].indexOf(cell);
+  const mkCell=(tag,txt)=>{ const c=document.createElement(tag); c.textContent=txt; return c; };
+  if(act==="colL"||act==="colR"){
+    const at=act==="colL"?colIdx:colIdx+1;
+    rows.forEach((r,ri)=>{ const tag=(ri===0)?"th":"td"; const c=mkCell(tag, ri===0?"제목":"내용");
+      const ref=r.cells[at]||null; r.insertBefore(c,ref); });
+  } else if(act==="rowU"||act==="rowD"){
+    const cols=row.cells.length;
+    const nr=document.createElement("tr");
+    for(let i=0;i<cols;i++){ nr.appendChild(mkCell("td","내용")); }
+    const ref=act==="rowU"?row:row.nextSibling;
+    tbody.insertBefore(nr,ref);
+  } else if(act==="delCol"){
+    if(row.cells.length<=1){ table.remove(); return; }
+    rows.forEach(r=>{ if(r.cells[colIdx]) r.deleteCell(colIdx); });
+  } else if(act==="delRow"){
+    if(rows.length<=1){ table.remove(); return; }
+    row.remove();
   }
 }
 // 선택 표시 해제
-function docClearSelection(body){ body.querySelectorAll(".doc-sel").forEach(el=>el.classList.remove("doc-sel")); docRemoveImageTools(); }
+function docClearSelection(body){ body.querySelectorAll(".doc-sel").forEach(el=>{ el.classList.remove("doc-sel"); if(el.matches&&el.matches("table.doc-table")){ el.removeAttribute("draggable"); el.style.cursor=""; } }); docRemoveImageTools(); }
 // 이미지 크기조절 툴바 표시 (작게/보통/크게/원본 + 삭제)
 function docShowImageTools(img,body){
   docRemoveImageTools();
@@ -3636,10 +3715,21 @@ function docInsertChecklist(){
 }
 function docInsertTable(){
   const r=parseInt(prompt("행 수",3),10)||3, c=parseInt(prompt("열 수",3),10)||3;
+  try{ document.execCommand("insertParagraph"); }catch(_){}
   let h='<table class="doc-table"><tbody>';
   for(let i=0;i<r;i++){ h+="<tr>"; for(let j=0;j<c;j++){ h+= i===0?"<th>제목</th>":"<td>내용</td>"; } h+="</tr>"; }
   h+="</tbody></table><p><br></p>";
   document.execCommand("insertHTML",false,h);
+  try{
+    const bodyEl=document.getElementById("doc_body");
+    bodyEl.querySelectorAll("li > table.doc-table").forEach(tb=>{
+      const li=tb.parentElement, list=li.parentElement;
+      list.parentNode.insertBefore(tb, list.nextSibling);
+      if(!li.textContent.trim() && !li.querySelector("img,table")) li.remove();
+      if(!list.children.length) list.remove();
+    });
+    scheduleDocSave();
+  }catch(_){}
 }
 function docInsertToggle(){
   const title=(prompt("토글 제목을 입력하세요","토글 제목")||"토글 제목");
