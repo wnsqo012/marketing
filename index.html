@@ -4476,7 +4476,7 @@ function openExpenseModal(source, mode){
   const okTxt = isEdit?"수정 저장":(isClone?"복제 저장":(isImport?"확인 후 저장":"저장"));
   Modal.open({title:titleTxt,wide:true,okLabel:okTxt,body:`
     ${isClone?`<div class="callout" style="margin-bottom:10px;font-size:12.5px">이전 건의 내용을 복제해 <b>새 지출결의서</b>로 저장합니다. 필요한 부분만 수정하세요. (작성일은 오늘로 초기화됨)</div>`:""}
-    ${isImport?`<div class="callout" style="margin-bottom:10px;font-size:12.5px">📄 업로드한 엑셀에서 내용을 불러왔습니다. <b>확인·수정 후 저장</b>하면 새 지출결의서로 등록됩니다. (첨부 이미지는 엑셀에서 자동으로 불러오지 못하니 필요 시 아래에서 추가하세요)</div>`:""}
+    ${isImport?`<div class="callout" style="margin-bottom:10px;font-size:12.5px">📄 업로드한 엑셀에서 내용과 첨부 이미지를 불러왔습니다. <b>확인·수정 후 저장</b>하면 새 지출결의서로 등록됩니다.</div>`:""}
     <div class="xls-wrap">
       <div class="xls-appr"><div class="abox"><div class="h">기안자</div><div class="b" id="exp_appr_drafter">${esc(hasSource?(source.drafter||""):me().name)}</div></div><div class="abox"><div class="h">검 토</div><div class="b"></div></div><div class="abox"><div class="h">결 재</div><div class="b"></div></div></div>
       <div class="xls-title">지 출 결 의 서</div>
@@ -4623,10 +4623,36 @@ async function importExpenseXlsx(file){
       vendor: str("C29"), bank: str("D29"), account: str("E29"),
       attachments:{quote:[],tax:[],bizreg:[],bankbook:[]},
     };
+    // 각 첨부 시트(견적서·세금계산서·사업자등록증·통장사본)에 박힌 이미지를 추출 → Storage 업로드 → 첨부 URL로
+    let imgCount=0, imgFail=0;
+    try{
+      const media=(wb.model&&wb.model.media)||[];  // 워크북에 포함된 모든 이미지
+      const sheetKeyByName={}; Object.keys(EXP_SHEET_OF).forEach(k=>{ sheetKeyByName[EXP_SHEET_OF[k]]=k; });
+      if(media.length){ toast("첨부 이미지 불러오는 중…"); }
+      for(const k of Object.keys(EXP_SHEET_OF)){
+        const sh=wb.getWorksheet(EXP_SHEET_OF[k]); if(!sh || !sh.getImages) continue;
+        const imgs=sh.getImages()||[];
+        for(const im of imgs){
+          try{
+            const m=media[im.imageId]; if(!m||!m.buffer) continue;
+            const ext=(m.extension||"png").replace("jpeg","jpg");
+            const mime=ext==="jpg"?"image/jpeg":("image/"+ext);
+            const blob=new Blob([m.buffer],{type:mime});
+            const file=new File([blob],`${k}_${imgCount+1}.${ext}`,{type:mime});
+            const r=await uploadOne(file);
+            if(r&&r.fileData){ src.attachments[k].push(r.fileData); imgCount++; }
+            else imgFail++;
+          }catch(e){ console.warn("이미지 추출 실패",k,e&&e.message); imgFail++; }
+        }
+      }
+    }catch(e){ console.warn("첨부 이미지 처리 실패:",e&&e.message); }
     const cnt=items.length;
     // 작성 모달을 채워서 연다 (엑셀 프리필 = import 모드)
     openExpenseModal(src, "import");
-    toast(cnt?`엑셀에서 적요 ${cnt}건을 불러왔습니다 · 확인 후 저장하세요`:"엑셀 내용을 불러왔습니다 · 확인 후 저장하세요");
+    let msg=cnt?`엑셀에서 적요 ${cnt}건`:"엑셀 내용";
+    if(imgCount) msg+=` · 첨부 이미지 ${imgCount}개`;
+    if(imgFail) msg+=` (이미지 ${imgFail}개 실패)`;
+    toast(msg+"을 불러왔습니다 · 확인 후 저장하세요");
   }catch(err){ console.error(err); toast("엑셀 읽기 실패: "+(err.message||"").slice(0,50)+" · 내보내기 양식과 같은 파일인지 확인하세요"); }
 }
 function openExpenseView(id){
