@@ -2,10 +2,7 @@
 <html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>TY LIFE 마케팅 플랫폼</title>
+<title>마케팅 운영 플랫폼</title>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,7 +13,7 @@
     --bg:#eef0f3; --surface:#fff; --surface-2:#f6f7f9; --surface-3:#fafbfc;
     --ink:#1c1f26; --ink-soft:#4a4f5a; --muted:#878d99; --faint:#aeb4be;
     --line:#e6e8ec; --line-strong:#d3d8df;
-    --primary:#C79A3B; --primary-ink:#9A741F; --primary-soft:#f7eecf;
+    --primary:#27474f; --primary-ink:#16292e; --primary-soft:#e7eeed;
     --brass:#b07d2e; --brass-soft:#f3e9d4;
     --s-plan:#7a8aa0; --s-plan-bg:#eaeef3;
     --s-prod:#5b7fb0; --s-prod-bg:#e6eefa;
@@ -39,7 +36,7 @@
   ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px;border:3px solid var(--bg)}
 
   /* login */
-  .login{min-height:100vh;min-height:100svh;min-height:100dvh;display:grid;place-items:center;padding:24px;background:radial-gradient(120% 80% at 50% -10%,#d9b356,#b98f2e 42%,#7c5e18)}
+  .login{min-height:100vh;min-height:100svh;min-height:100dvh;display:grid;place-items:center;padding:24px;background:radial-gradient(120% 80% at 50% -10%,#2f535b,#27474f 42%,#16292e)}
   .login-card{background:var(--surface);width:min(380px,100%);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden}
   .login-head{padding:26px 28px 20px;border-bottom:1px solid var(--line)}
   .login-head .mk{font-family:var(--fm);font-size:11px;letter-spacing:.18em;color:var(--brass);text-transform:uppercase}
@@ -55,17 +52,16 @@
   .login-foot td.k{font-family:var(--fm);color:var(--ink)}
 
   /* shell */
-  .bar{position:sticky;top:0;z-index:30;background:var(--primary);color:#2a1f06;border-bottom:1px solid rgba(0,0,0,.15)}
+  .bar{position:sticky;top:0;z-index:30;background:var(--primary);color:#eef2f1;border-bottom:1px solid rgba(0,0,0,.2)}
   .bar-in{display:flex;align-items:center;gap:14px;padding:11px 20px}
   .brand{display:flex;align-items:baseline;gap:9px}
-  .brand .mk{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;color:#6b5518;text-transform:uppercase}
-  .brand h1{font-family:var(--fd);font-weight:600;font-size:17px;margin:0;color:#2a1f06}
+  .brand .mk{font-family:var(--fm);font-size:10.5px;letter-spacing:.16em;color:#9fc0bd;text-transform:uppercase}
+  .brand h1{font-family:var(--fd);font-weight:500;font-size:17px;margin:0;color:#fff}
   .spacer{flex:1}
-  .who{font-size:12px;color:#5a4713}.who b{color:#2a1f06;font-weight:600}
-  .ai-flag{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid rgba(0,0,0,.22);color:#5a4713}
+  .who{font-size:12px;color:#bcd2cf}.who b{color:#fff;font-weight:600}
+  .ai-flag{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.25);color:#cfe0de}
   .ai-flag.live{background:var(--brass);border-color:var(--brass);color:#fff}
-  .hbtn{appearance:none;border:1px solid rgba(0,0,0,.22);background:transparent;color:#3a2c08;font-size:11.5px;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:var(--fm)}
-  .hbtn:hover{background:rgba(0,0,0,.06)}
+  .hbtn{appearance:none;border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe0de;font-size:11.5px;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:var(--fm)}
   .cmet-kpis{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
   .cal-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
   .cal-nav{display:flex;align-items:center;gap:4px}
@@ -144,7 +140,7 @@
 
   /* primitives */
   .btn{appearance:none;cursor:pointer;font-family:var(--fu);font-size:13px;font-weight:600;border-radius:9px;padding:9px 14px;border:1px solid transparent;transition:.13s}
-  .btn-primary{background:var(--primary);color:#2a1f06;font-weight:600}.btn-primary:hover{background:var(--primary-ink);color:#fff}
+  .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-ink)}
   .btn-ghost{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}.btn-ghost:hover{background:var(--surface-2)}
   .btn-ok{background:var(--ok);color:#fff}.btn-ok:hover{filter:brightness(.94)}
   .btn-warn{background:var(--warn-bg);color:var(--warn);border-color:#e9c4ba}.btn-warn:hover{background:#f3d3c9}
@@ -180,7 +176,7 @@
   .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;display:inline-block}
   .prio{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px}
   .prio.high{color:var(--warn);background:var(--warn-bg)} .prio.mid{color:var(--s-prod);background:var(--s-prod-bg)} .prio.low{color:var(--muted);background:var(--surface-2)}
-  .avatar{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;background:var(--primary-ink);flex:0 0 auto}
+  .avatar{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;background:var(--primary);flex:0 0 auto}
 
   /* stat */
   .stat{padding:15px 16px}
@@ -685,7 +681,7 @@
 <!-- LOGIN -->
 <div id="login" class="login" style="display: none;">
   <div class="login-card">
-    <div class="login-head"><div class="mk">TY LIFE marketing platform</div><h1>TY LIFE 마케팅 플랫폼</h1><p>계정으로 로그인하세요</p></div>
+    <div class="login-head"><div class="mk">marketing ops platform</div><h1>마케팅 운영 플랫폼</h1><p>계정으로 로그인하세요</p></div>
     <div class="login-body">
       <div class="login-err" id="loginErr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
       <label class="fld"><span class="lab">이메일</span><input type="email" id="loginId" autocomplete="username" placeholder="name@example.com"></label>
@@ -698,10 +694,10 @@
 <!-- SHELL -->
 <div id="shell" style="display: block;">
   <header class="bar"><div class="bar-in">
-    <div class="brand"><span class="mk">TY</span><h1>TY LIFE 마케팅 플랫폼</h1></div>
+    <div class="brand"><span class="mk">ops</span><h1>마케팅 운영 플랫폼</h1></div>
     <div class="spacer"></div>
     <span class="ai-flag live" id="aiFlag">OpenAI(서버) · gpt-4o-mini</span>
-    <span class="who" id="who"><b>—</b></span>
+    <span class="who" id="who"><b>형지수(팀장용)</b> · 팀장</span>
     <button class="hbtn" id="globalSearchBtn" title="전체 검색 (업무·공지·회의)"><span class="hi">🔍</span><span class="hl"> 검색</span></button>
     <div class="bellwrap" style="position:relative">
       <button class="hbtn" id="notifBell"><span class="hi">🔔</span><span class="nbadge" id="notifBadge" style="display: none;">99+</span></button>
@@ -802,8 +798,37 @@
     <button class="hbtn" id="logoutBtn"><span class="hi">⎋</span><span class="hl"> 로그아웃</span></button>
   </div></header>
   <div class="layout">
-    <aside class="side" id="side"></aside>
-    <main class="content" id="content"></main>
+    <aside class="side" id="side"><div class="nav-sec">메뉴</div><div class="nav-item " data-act="goto" data-view="dashboard"><span class="ic">◉</span>대시보드<span class="cnt">2</span></div><div class="nav-item " data-act="goto" data-view="tasks"><span class="ic">≡</span>업무<span class="cnt">15</span></div><div class="nav-item " data-act="goto" data-view="gantt"><span class="ic">📊</span>일정</div><div class="nav-item " data-act="goto" data-view="community"><span class="ic">🗣️</span>커뮤니티</div><div class="nav-item " data-act="goto" data-view="meetings"><span class="ic">📋</span>회의</div><div class="nav-item " data-act="goto" data-view="generator"><span class="ic">🎨</span>생성기</div><div class="nav-item " data-act="goto" data-view="blog"><span class="ic">✍️</span>블로그 원고</div><div class="nav-item on" data-act="goto" data-view="docs"><span class="ic">📄</span>기획안</div><div class="nav-item " data-act="goto" data-view="spelldict"><span class="ic">📗</span>교정 사전</div><div class="nav-item " data-act="goto" data-view="ads"><span class="ic">📈</span>광고 분석</div><div class="nav-item " data-act="goto" data-view="content"><span class="ic">📱</span>콘텐츠 성과</div><div class="nav-item " data-act="goto" data-view="expenses"><span class="ic">🧾</span>지출결의서</div><div class="nav-item " data-act="goto" data-view="stats"><span class="ic">▤</span>운영 통계</div><div class="nav-item " data-act="goto" data-view="library"><span class="ic">💬</span>피드백 라이브러리</div><div class="nav-item " data-act="goto" data-view="notify"><span class="ic">🔔</span>알림 설정</div><div class="nav-item " data-act="goto" data-view="access"><span class="ic">🧾</span>접속로그</div><div class="nav-item " data-act="goto" data-view="cleanup"><span class="ic">🧹</span>파일 정리</div><div class="nav-item " data-act="goto" data-view="brand"><span class="ic">🏷</span>브랜드 관리</div></aside>
+    <main class="content" id="content"><div class="ph"><div><div class="eb">marketing ops</div><h2>기획안</h2><p>기획 문서를 작성하고 팀과 공유합니다. 서식·표·체크리스트·이미지를 지원합니다.</p></div><div class="right"><button class="btn btn-primary btn-sm" data-act="doc-new">＋ 새 기획안</button></div></div>
+    <div class="toolbar"><input class="search" id="doc_q" type="text" placeholder="🔍 제목·내용·브랜드·태그 검색" value=""></div>
+    <div class="doc-grid"><div class="doc-card" data-act="doc-open" data-id="e8e40476-5693-46d9-b593-b33814fe34d0">
+      <div class="doc-card-t">[기획/제작] 맘잇 카드뉴스 기획안</div>
+      <div class="doc-card-p">브랜드 : 한일, 포근 콧물흡입기상세페이지(컨트롤+클릭) : https://www.hanilstore.co.kr/ALL/?idx=7 카드뉴스 기획 ㅜㅉ욱</div>
+      <div class="doc-card-m">
+        <span class="tag">베이비페어</span>
+        <span class="tag" style="border-color:var(--primary);color:var(--primary)">🔗 업무</span>
+        
+        <span class="doc-card-meta">최효선 · 7/13</span>
+      </div>
+    </div><div class="doc-card" data-act="doc-open" data-id="d5d25829-e92d-4a20-b5ca-19447e47fa98">
+      <div class="doc-card-t">[기획/제작] 파트너스 B2C 랜딩페이지 기획안</div>
+      <div class="doc-card-p">파트너스 B2C 랜딩페이지 기획안글씨체 너무 못생겼다..오마갓..홀리..목록흠,,목록 밑으로 한개만 더 들어갔으면 좋겠다흠..토글 내용 지우면 다 사라짐..이런,,</div>
+      <div class="doc-card-m">
+        <span class="tag">TY 라이프 파트너스</span>
+        <span class="tag" style="border-color:var(--primary);color:var(--primary)">🔗 업무</span>
+        
+        <span class="doc-card-meta">최효선 · 7/13</span>
+      </div>
+    </div><div class="doc-card" data-act="doc-open" data-id="74fce2b0-78bf-414a-8117-b1daf6044c35">
+      <div class="doc-card-t">[기획/제작] 맘잇 쇼츠 : 7월 14일 기획안</div>
+      <div class="doc-card-p">브랜드 : 한일, 포근 콧물흡입기상세페이지(컨트롤+클릭) : https://www.hanilstore.co.kr/ALL/?idx=7 진짜 신박하다는 콧물흡입기 사실 콧물흡입기라고 하면 다 비슷비슷하</div>
+      <div class="doc-card-m">
+        <span class="tag">베이비페어</span>
+        <span class="tag" style="border-color:var(--primary);color:var(--primary)">🔗 업무</span>
+        
+        <span class="doc-card-meta">최효선 · 7/13</span>
+      </div>
+    </div></div></main>
   </div>
 </div>
 
@@ -866,9 +891,9 @@ const STATUS_STYLE = {planning:"--s-plan",producing:"--s-prod",revision:"--warn"
    목록에 없는 담당자는 아래 ASSIGNEE_FALLBACK 색이 순서대로 자동 배정됩니다.
    ===================================================================== */
 const ASSIGNEE_COLORS = {
-  "기획자": "#EC6E9C",  // 핑크
-  "디자이너": "#4CAF71",  // 그린
-  "PD": "#E6B325",  // 옐로우
+  "최효선": "#EC6E9C",  // 핑크
+  "이희수": "#4CAF71",  // 그린
+  "노현서": "#E6B325",  // 옐로우
   "형지수": "#3B82C4",  // 파랑
   "형지수(실무용)": "#5B9BD5",  // 밝은 파랑
   "형지수(팀장용)": "#3B82C4",  // 파랑
@@ -908,8 +933,8 @@ const CHECKLIST = ["브랜드 확인","오탈자","CTA","랜딩","심의","일�
    - URL/anon key 만 바꾸면 다른 프로젝트로 이전 가능
    - 컬럼명 매핑(camelCase ↔ snake_case)을 이 한 곳에 집중
 ===================================================================== */
-const SUPA={ url:"https://thqkdufbjznaeqwrrpsj.supabase.co",
-  key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRocWtkdWZianpuYWVxd3JycHNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTQzMjQsImV4cCI6MjA5OTU5MDMyNH0.7O63tM1Q5DlOJfgumKVpMtpS4caKr2BOQ7HYxQuUtUs" };
+const SUPA={ url:"https://rreqqixxvqhgvcyogbfa.supabase.co",
+  key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZXFxaXh4dnFoZ3ZjeW9nYmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1ODc0MjEsImV4cCI6MjA5ODE2MzQyMX0.CXYuvbIMYsxl-c-P_BqW18p6cMS4N7M1BOXCFrxyMvI" };
 let sb=null;
 const BUCKET="assets";
 const publicUrl=path=>`${SUPA.url}/storage/v1/object/public/${BUCKET}/${path}`;
@@ -1012,55 +1037,41 @@ const Store = (()=>{
   async function loadAll(){
     db=blank();
     const get=async(table,from)=>{ const {data,error}=await sb.from(table).select("*"); if(error)throw error; return (data||[]).map(from); };
-    const colOk=async(table,col)=>{ try{ const {error}=await sb.from(table).select(col).limit(1); return !error; }catch(e){ return false; } };
-    // 안전 로더: 실패해도 빈 배열 + 플래그 콜백 (테이블 없어도 화면 정상)
-    const safe=async(key,table,from,onFlag)=>{ try{ db[key]=await get(table,from); if(onFlag) onFlag(true); }catch(e){ db[key]=[]; if(onFlag) onFlag(false); } };
-
-    // 1) 필수 기준 데이터 먼저 (users가 있어야 로그인 매핑 가능)
-    const [brands,users,baRes] = await Promise.all([
-      get("brands",Maps.brand.from),
-      get("users",Maps.user.from),
-      sb.from("brand_assignments").select("*"),
-    ]);
-    db.brands=brands; db.users=users;
-    const ba=(baRes&&baRes.data)||[];
+    db.brands=await get("brands",Maps.brand.from);
+    db.users=await get("users",Maps.user.from);
+    const ba=(await sb.from("brand_assignments").select("*")).data||[];
     db.users.forEach(u=>{ u.brandIds=ba.filter(x=>x.user_id===u.id).map(x=>x.brand_id);
       if(u.role==="member"&&!u.brandIds.length) u.brandIds=db.brands.map(b=>b.id); });
-
-    // 2) 나머지 전부 병렬 로딩 (순차 → 병렬: 로그인 속도 대폭 향상)
-    await Promise.all([
-      safe("campaigns","campaigns",Maps.campaign.from),
-      safe("tasks","tasks",Maps.task.from),
-      safe("assets","assets",Maps.asset.from),
-      safe("versions","versions",Maps.version.from),
-      safe("reviews","reviews",Maps.review.from),
-      safe("performance","performance",Maps.perf.from),
-      safe("retros","retrospectives",Maps.retro.from),
-      safe("feedbackLib","feedback_library",Maps.fb.from),
-      safe("activity","activity",Maps.activity.from),
-      safe("notifs","notification_logs",Maps.notif.from),
-      safe("posts","posts",Maps.post.from),
-      safe("comments","comments",Maps.comment.from),
-      safe("adMetrics","ad_metrics",Maps.adMetric.from),
-      safe("contentMetrics","content_metrics",Maps.contentMetric.from,v=>CONTENT_OK=v),
-      safe("accessLogs","access_logs",Maps.accessLog.from),
-      safe("taskMembers","task_members",Maps.taskMember.from,v=>TASK_MEMBERS_OK=v),
-      safe("taskReviewers","task_reviewers",Maps.taskReviewer.from,v=>TASK_REVIEWERS_OK=v),
-      safe("vacations","vacations",Maps.vacation.from,v=>VAC_OK=v),
-      safe("expenses","expenses",Maps.expense.from,v=>EXPENSE_OK=v),
-      safe("spellDict","spell_dict",Maps.spellDict.from,v=>SPELL_OK=v),
-      safe("docs","docs",Maps.doc.from,v=>DOCS_OK=v),
-      safe("meetings","meetings",Maps.meeting.from,v=>MEETINGS_OK=v),
-      safe("meetingComments","meeting_comments",Maps.meetingComment.from,v=>MEETING_EXT_OK=v),
-      // 컬럼 존재 여부 체크 (병렬)
-      (async()=>{ ASSET_THUMB_OK=await colOk("assets","thumb_path"); })(),
-      (async()=>{ ASSET_PAGES_OK=await colOk("assets","pages"); })(),
-      (async()=>{ ASSET_SORT_OK=await colOk("assets","sort_no"); })(),
-      (async()=>{ ASSET_PHASES_OK=await colOk("assets","phases"); })(),
-      (async()=>{ MEETING_ATT_OK=await colOk("meetings","attendee_ids"); })(),
-      (async()=>{ MEETING_TIME_OK=await colOk("meetings","mtime"); })(),
-      (async()=>{ try{ const {data}=await sb.from("app_settings").select("value").eq("key","ai").maybeSingle(); if(data&&data.value){ AI.key=data.value.key||""; AI.model=data.value.model||AI.model; AI.useReal=!!data.value.useReal; AI.mode=data.value.mode||"direct"; } APP_SETTINGS_OK=true; }catch(e){ APP_SETTINGS_OK=false; } })(),
-    ]);
+    db.campaigns=await get("campaigns",Maps.campaign.from);
+    db.tasks=await get("tasks",Maps.task.from);
+    db.assets=await get("assets",Maps.asset.from);
+    try{ const {error}=await sb.from("assets").select("thumb_path").limit(1); ASSET_THUMB_OK=!error; }catch(e){ ASSET_THUMB_OK=false; }
+    try{ const {error}=await sb.from("assets").select("pages").limit(1); ASSET_PAGES_OK=!error; }catch(e){ ASSET_PAGES_OK=false; }
+    try{ const {error}=await sb.from("assets").select("sort_no").limit(1); ASSET_SORT_OK=!error; }catch(e){ ASSET_SORT_OK=false; }
+    try{ const {error}=await sb.from("assets").select("phases").limit(1); ASSET_PHASES_OK=!error; }catch(e){ ASSET_PHASES_OK=false; }
+    db.versions=await get("versions",Maps.version.from);
+    db.reviews=await get("reviews",Maps.review.from);
+    db.performance=await get("performance",Maps.perf.from);
+    db.retros=await get("retrospectives",Maps.retro.from);
+    db.feedbackLib=await get("feedback_library",Maps.fb.from);
+    db.activity=await get("activity",Maps.activity.from);
+    try{ db.notifs=await get("notification_logs",Maps.notif.from); }catch(e){ db.notifs=[]; }
+    try{ db.posts=await get("posts",Maps.post.from); }catch(e){ db.posts=[]; }
+    try{ db.comments=await get("comments",Maps.comment.from); }catch(e){ db.comments=[]; }
+    try{ db.adMetrics=await get("ad_metrics",Maps.adMetric.from); }catch(e){ db.adMetrics=[]; }
+    try{ db.contentMetrics=await get("content_metrics",Maps.contentMetric.from); CONTENT_OK=true; }catch(e){ db.contentMetrics=[]; CONTENT_OK=false; }
+    try{ db.accessLogs=await get("access_logs",Maps.accessLog.from); }catch(e){ db.accessLogs=[]; }
+    try{ db.taskMembers=await get("task_members",Maps.taskMember.from); TASK_MEMBERS_OK=true; }catch(e){ db.taskMembers=[]; TASK_MEMBERS_OK=false; }
+    try{ db.taskReviewers=await get("task_reviewers",Maps.taskReviewer.from); TASK_REVIEWERS_OK=true; }catch(e){ db.taskReviewers=[]; TASK_REVIEWERS_OK=false; }
+    try{ db.vacations=await get("vacations",Maps.vacation.from); VAC_OK=true; }catch(e){ db.vacations=[]; VAC_OK=false; }
+    try{ db.expenses=await get("expenses",Maps.expense.from); EXPENSE_OK=true; }catch(e){ db.expenses=[]; EXPENSE_OK=false; }
+    try{ db.spellDict=await get("spell_dict",Maps.spellDict.from); SPELL_OK=true; }catch(e){ db.spellDict=[]; SPELL_OK=false; }
+    try{ db.docs=await get("docs",Maps.doc.from); DOCS_OK=true; }catch(e){ db.docs=[]; DOCS_OK=false; }
+    try{ db.meetings=await get("meetings",Maps.meeting.from); MEETINGS_OK=true; }catch(e){ db.meetings=[]; MEETINGS_OK=false; }
+    if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("attendee_ids").limit(1); MEETING_ATT_OK=!error; }catch(e){ MEETING_ATT_OK=false; } }
+    if(MEETINGS_OK){ try{ const {error}=await sb.from("meetings").select("mtime").limit(1); MEETING_TIME_OK=!error; }catch(e){ MEETING_TIME_OK=false; } }
+    try{ db.meetingComments=await get("meeting_comments",Maps.meetingComment.from); MEETING_EXT_OK=true; }catch(e){ db.meetingComments=[]; MEETING_EXT_OK=false; }
+    try{ const {data}=await sb.from("app_settings").select("value").eq("key","ai").maybeSingle(); if(data&&data.value){ AI.key=data.value.key||""; AI.model=data.value.model||AI.model; AI.useReal=!!data.value.useReal; AI.mode=data.value.mode||"direct"; } APP_SETTINGS_OK=true; }catch(e){ APP_SETTINGS_OK=false; }
   }
   return {
     init(){ db=blank(); },
@@ -1420,7 +1431,7 @@ const Stats=(()=>{
    ※ 조직 공유가 필요하면 추후 app_settings 테이블로 이전 가능
 ===================================================================== */
 const Settings=(()=>{
-  const KEY="tylife_mktops_notify_settings";
+  const KEY="mktops_notify_settings";
   const def={enabled:true,
     kakaoEnabled:false, webhookUrl:"",            // 카카오(솔라피) — 추후 사용
     emailEnabled:true, emailWebhookUrl:"",        // 이메일 — 지금 사용
@@ -1470,7 +1481,7 @@ const Notify=(()=>{
         <div style="font-size:11px;color:#5e7a72;font-weight:700;margin-bottom:4px">${esc(p.noteLabel||"메모")}</div>
         <div style="font-size:13px;color:#33424a;white-space:pre-wrap">${esc(p.note)}</div></div>` : "";
     return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e6e9ec;border-radius:12px;overflow:hidden">
-      <div style="background:#27474f;color:#fff;padding:16px 20px;font-size:15px;font-weight:600">TY LIFE 마케팅 플랫폼 · 업무 알림</div>
+      <div style="background:#27474f;color:#fff;padding:16px 20px;font-size:15px;font-weight:600">마케팅 운영 플랫폼 · 업무 알림</div>
       <div style="padding:20px">
         <p style="margin:0 0 14px;color:#33424a;font-size:14px">${esc(p.actionText)}</p>
         <table style="width:100%;border-collapse:collapse;font-size:13px;color:#33424a">
@@ -2014,7 +2025,7 @@ function workloadCard(tasks,title){
     ${months.map(m=>`<div class="mbar"><span class="ml">${m}</span><span class="mt"><span class="mf" style="width:${Math.max(4,Math.round(byMonth[m]/maxc*100))}%"></span></span><span class="mc">${byMonth[m]}</span></div>`).join("")}
   </div></div>`;
 }
-function ph(title,desc,right=""){return `<div class="ph"><div><div class="eb">TY LIFE</div><h2>${title}</h2><p>${desc}</p></div>${right?`<div class="right">${right}</div>`:""}</div>`;}
+function ph(title,desc,right=""){return `<div class="ph"><div><div class="eb">marketing ops</div><h2>${title}</h2><p>${desc}</p></div>${right?`<div class="right">${right}</div>`:""}</div>`;}
 function taskList(list, groupUid){
   return `<div class="tlist">${list.map(t=>{
     const b=Store.brand(t.brandId),o=Store.user(t.ownerId),over=t.due<Date.now()&&STATUS[t.status].idx<STATUS.approved.idx;
@@ -2799,6 +2810,8 @@ function openTaskModal(preset){
     <div class="grid g2" style="gap:0 16px">
       <label class="fld"><span class="lab">제목</span><input type="text" id="t_title" value="${p?esc(p.title+" (복사)"):""}" placeholder="예) 여름 프로모션 캠페인"></label>
       <label class="fld"><span class="lab">목적</span><select id="t_purpose">${PURPOSES.map(x=>`<option${p&&p.purpose===x?" selected":""}>${x}</option>`).join("")}</select></label>
+      <label class="fld"><span class="lab">브랜드</span><select id="t_brand">${brands.map(b=>`<option value="${b.id}"${p&&p.brandId===b.id?" selected":""}>${esc(b.name)}</option>`).join("")}<option value="__custom__">직접 입력…</option></select></label>
+      <label class="fld" id="t_customWrap" style="display:none"><span class="lab">브랜드 직접 입력</span><input type="text" id="t_customBrand" placeholder="브랜드명을 입력하세요"></label>
       <label class="fld"><span class="lab">캠페인</span><select id="t_camp"><option value="">(없음)</option>${cmps.map(c=>`<option value="${c.id}"${p&&p.campaignId===c.id?" selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
       <label class="fld"><span class="lab">우선순위</span><select id="t_prio">${PRIORITIES.map(k=>`<option value="${k.k}"${p&&p.priority===k.k?" selected":""}>${k.l}</option>`).join("")}</select></label>
       <label class="fld"><span class="lab">시작일</span><input type="date" id="t_start" value="${today}"></label>
@@ -2812,10 +2825,9 @@ function openTaskModal(preset){
     <div class="chips" id="t_collabs" style="margin-bottom:4px">${Store.db.users.filter(x=>x.role==="member"&&x.id!==me().id).map(x=>`<label class="chip"><input type="checkbox" value="${x.id}"${pCollabs.includes(x.id)?" checked":""}><span>${esc(x.name)}</span></label>`).join("")||`<span class="hint">선택 가능한 실무자가 없습니다.</span>`}</div>`:""}`,
     submit:async()=>{
       const title=val("t_title").trim(); if(!title){toast("제목을 입력하세요");return false;}
-      // TY LIFE는 단일 브랜드 '태양라이프' 고정 — 선택 UI 없이 자동 지정
-      let brandId = p ? p.brandId : null;
-      if(!brandId){ brandId = await resolveCustomBrand("태양라이프"); }
-      if(!brandId){ toast("브랜드 설정 실패 — 다시 시도하세요"); return false; }
+      let brandId=val("t_brand");
+      if(brandId==="__custom__"){ const nm=val("t_customBrand").trim(); if(!nm){toast("브랜드명을 입력하세요");return false;}
+        brandId=await resolveCustomBrand(nm); if(!brandId){toast("브랜드 저장 실패 — 다시 시도하세요");return false;} }
       const kpis=[...document.querySelectorAll("[data-kpi]")].filter(i=>i.value!=="").map(i=>({metric:i.dataset.kpi,target:+i.value,actual:null}));
       const start=val("t_start")?new Date(val("t_start")).getTime():Date.now();
       const due=val("t_due")?new Date(val("t_due")).getTime():start+7*86400000;
@@ -2834,6 +2846,7 @@ function openTaskModal(preset){
       Notify.send({type:"task_created_me",recipientRole:"owner",taskId:t.id});
       toast(p?"업무를 복제했습니다":"업무 생성 완료"); session.route={view:"task",id:t.id}; render();
     }});
+  document.getElementById("t_brand").onchange=e=>{ const c=e.target.value==="__custom__"; document.getElementById("t_customWrap").style.display=c?"block":"none"; if(c)document.getElementById("t_customBrand").focus(); };
 }
 async function resolveCustomBrand(name){
   const ex=Store.db.brands.find(x=>x.name===name); if(ex) return ex.id;
@@ -2973,7 +2986,6 @@ async function makeWebpThumb(file, maxDim=720, q=0.72){
 async function uploadOne(f){
   if(f.size>50*1024*1024){ toast(`${f.name}: 50MB 초과로 제외됨`); return null; }
   const path=`${Store.uid()}_${(f.name||"file").replace(/[^\w.\-]/g,"_")}`;
-  // contentType은 비어있으면 확장자로 추론, 그래도 없으면 일반 바이너리로
   let ct=f.type||"";
   if(!ct){ const ext=(f.name||"").split(".").pop().toLowerCase();
     const map={mp4:"video/mp4",mov:"video/quicktime",m4v:"video/x-m4v",avi:"video/x-msvideo",mkv:"video/x-matroska",webm:"video/webm",pdf:"application/pdf",csv:"text/csv",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",xls:"application/vnd.ms-excel",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",doc:"application/msword",pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",ppt:"application/vnd.ms-powerpoint",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",webp:"image/webp",zip:"application/zip",hwp:"application/x-hwp",txt:"text/plain"};
@@ -3007,7 +3019,7 @@ async function collectFiles(){ // 복수 (산출물 등록용)
   if(mode==="file"){ const files=asFiles.length?asFiles.slice():[...document.getElementById("as_file").files];
     if(!files.length) return [];
     const out=[]; let failed=0; for(const f of files){ const r=await uploadOne(f); if(r) out.push(r); else failed++; }
-    if(!out.length && failed){ window.__lastCollectFailed=true; }   // 파일은 있었으나 업로드 전부 실패
+    if(!out.length && failed){ window.__lastCollectFailed=true; }
     return out;
   }
   if(mode==="text"){ const body=(val("as_body")||"").trim();
@@ -3443,10 +3455,12 @@ function viewDocEditor(id){
   const myTasks=(role==="manager"||role==="executive")?Store.db.tasks:Store.db.tasks.filter(t=>t.ownerId===me().id||Store.membersOf(t.id).some(m=>m.userId===me().id));
   const au=Store.user(d.authorId), up=Store.user(d.updatedBy);
   const backView=isMemo?"dashboard":"docs", backLabel=isMemo?"← 대시보드":"← 기획안 목록";
+  const linkedTask=(!isMemo && d.taskId)?Store.task(d.taskId):null;   // 매칭된 업무
   return `
   <div class="doc-editor-top">
     <span class="eb"><span style="cursor:pointer" data-act="goto" data-view="${backView}">${backLabel}</span></span>
     ${isMemo?`<span class="tag" style="border-color:var(--brass);color:var(--brass);margin-left:6px">🔒 나만 보는 메모</span>`:""}
+    ${linkedTask?`<button class="btn btn-ghost btn-sm" data-act="open-task" data-id="${linkedTask.id}" title="이 기획안과 연결된 업무로 이동" style="margin-left:8px">🔗 연결 업무: ${esc(linkedTask.title.length>18?linkedTask.title.slice(0,18)+"…":linkedTask.title)}</button>`:""}
     <span style="flex:1"></span>
     ${canEdit?`<span class="doc-savestate" id="doc_savestate">저장됨</span>`:`<span class="tag">읽기 전용</span>`}
     ${isMemo?"":`<button class="btn btn-ghost btn-sm" data-act="doc-copylink" data-id="${d.id}">🔗 링크 복사</button>`}
@@ -3544,15 +3558,31 @@ function wireDocEditor(){
       const block=e.target.closest(".doc-embed, .doc-table, .doc-toggle, hr");
       if(block){ block.classList.add("doc-sel"); }
     });
-    // Delete/Backspace로 선택된 블록·이미지 삭제 (단, 텍스트 편집 중이면 일반 삭제)
+    // Delete/Backspace: 개체(블록) 선택 시 개체 삭제. 셀·토글 내부는 글자만 삭제(개체 보호).
     body.addEventListener("keydown",e=>{
       if(e.key==="Delete"||e.key==="Backspace"){
-        // 표 셀·토글 내부에서 편집 중이면 블록 삭제하지 않고 일반 글자 삭제
-        const inEditable=(()=>{ const s=window.getSelection(); if(!s||!s.anchorNode)return false;
+        const cellCtx=(()=>{ const s=window.getSelection(); if(!s||!s.anchorNode)return null;
           const el=s.anchorNode.nodeType===1?s.anchorNode:s.anchorNode.parentElement;
-          return !!(el&&el.closest("td, th, .doc-toggle-t, .doc-toggle-b")); })();
+          return el?el.closest("td, th, .doc-toggle-t, .doc-toggle-b"):null; })();
         const sel=body.querySelector(".doc-sel");
-        if(sel && !inEditable){ e.preventDefault(); const wrap=sel.closest(".doc-embed")||sel; wrap.remove(); docRemoveImageTools(); scheduleDocSave(); }
+        if(sel && !cellCtx){
+          e.preventDefault(); const wrap=sel.closest(".doc-embed")||sel; wrap.remove(); docRemoveImageTools(); scheduleDocSave();
+        } else if(cellCtx){
+          const sel2=window.getSelection();
+          const txt=(cellCtx.textContent||"").replace(/\u200b/g,"").trim();
+          // 1) 빈 셀이면 차단
+          if(txt===""){ e.preventDefault(); return; }
+          // 2) 셀 맨 앞 Backspace → 이전 개체와 병합 차단
+          if(e.key==="Backspace" && sel2 && sel2.isCollapsed){
+            const r=sel2.getRangeAt(0).cloneRange(); r.selectNodeContents(cellCtx); r.setEnd(sel2.anchorNode, sel2.anchorOffset);
+            if(r.toString().replace(/\u200b/g,"").length===0){ e.preventDefault(); return; }
+          }
+          // 3) 셀 맨 끝 Delete → 다음 개체와 병합 차단
+          if(e.key==="Delete" && sel2 && sel2.isCollapsed){
+            const r=sel2.getRangeAt(0).cloneRange(); r.selectNodeContents(cellCtx); r.setStart(sel2.anchorNode, sel2.anchorOffset);
+            if(r.toString().replace(/\u200b/g,"").length===0){ e.preventDefault(); return; }
+          }
+        }
       }
       // Tab: 들여쓰기 / Shift+Tab: 내어쓰기 (목록 안 목록 만들기)
       if(e.key==="Tab"){
@@ -3662,6 +3692,7 @@ async function docInsertFile(body){
       const ext=(f.name.split(".").pop()||"").toUpperCase();
       const sizeKB=Math.round(f.size/1024);
       const sizeTxt=sizeKB>1024?(Math.round(sizeKB/102.4)/10)+"MB":sizeKB+"KB";
+      // 다운로드 가능한 파일 카드 (본문에 삽입, contenteditable=false로 블록 단위 선택·삭제)
       const card=`<div class="doc-file" contenteditable="false"><a href="${esc(att.fileData)}" download="${esc(f.name)}" target="_blank" rel="noopener"><span class="doc-file-ic">📎</span><span class="doc-file-info"><span class="doc-file-name">${esc(f.name)}</span><span class="doc-file-meta">${esc(ext)} · ${sizeTxt}</span></span><span class="doc-file-dl">다운로드</span></a></div><p><br></p>`;
       document.execCommand("insertHTML",false,card);
       scheduleDocSave();
@@ -4020,11 +4051,10 @@ function viewGantt(){
   // 확정 업무(팀장 검토 완료 이상) + 휴가
   const all=Store.db.tasks.filter(t=>t.due && STATUS[t.status].idx>=STATUS.exec_review.idx);
   const vmts=d=>{const p=(d||"").split("-").map(Number);return p.length===3?new Date(p[0],p[1]-1,p[2]).getTime():Date.parse(d);};
-  const vacs=(VAC_OK && me().role!=="viewer")?Store.vacationsAll().slice():[];   // 뷰어는 휴가 열람 제한
+  const vacs=VAC_OK?Store.vacationsAll().slice():[];
 
   // ---- 잔여 연차 카드 (팀장: 전원 / 팀원: 본인) ----
-  const lvUsers=me().role==="viewer" ? []   // 뷰어는 연차/휴가 열람 제한
-    : (me().role==="manager"||me().role==="executive")
+  const lvUsers=(me().role==="manager"||me().role==="executive")
     ? Store.db.users.filter(u=>["member","manager","executive"].includes(u.role)&&u.hireDate)
     : Store.db.users.filter(u=>u.id===me().id&&u.hireDate);
   const isMgrLv=me().role==="manager";
@@ -4473,7 +4503,7 @@ function openExpenseModal(source, mode){
   if(hasSource){ // 소스 첨부 URL을 편집 상태로 복원 (복제도 동일 첨부를 이어받음)
     EXP_ATT_DEFS.forEach(([k])=>{ const arr=(source.attachments&&source.attachments[k])||[]; expAtt[k]=arr.map(u=>({url:u,path:"",fileName:""})); });
   }
-  // 복제는 작성일을 오늘로 리셋(과거 건 복제 대비), 그 외 값은 소스 그대로 채움
+  // 복제는 작성일을 오늘로 리셋, 임포트는 엑셀에 적힌 작성일 유지, 그 외 소스 그대로
   const formSrc = hasSource ? (isClone ? {...source, docDate:new Date().toISOString().slice(0,10)} : source) : null;
   const titleTxt = isEdit?"지출결의서 수정":(isClone?"지출결의서 복제 작성":(isImport?"엑셀 불러오기 — 내용 확인":"지출결의서 작성"));
   const okTxt = isEdit?"수정 저장":(isClone?"복제 저장":(isImport?"확인 후 저장":"저장"));
@@ -4598,20 +4628,24 @@ async function importExpenseXlsx(file){
     const wb=new ExcelJS.Workbook();
     const buf=await file.arrayBuffer();
     await wb.xlsx.load(buf);
+    // '지출결의서' 시트 우선, 없으면 첫 시트
     const ws=wb.getWorksheet("지출결의서")||wb.worksheets[0];
     if(!ws) throw new Error("시트를 찾을 수 없습니다");
     const cell=addr=>{ try{ const c=ws.getCell(addr); let v=c.value;
       if(v&&typeof v==="object"){ if(v.result!==undefined) v=v.result; else if(v.text!==undefined) v=v.text; else if(v.richText) v=v.richText.map(r=>r.text).join(""); }
       return v==null?"":v; }catch(_){ return ""; } };
     const str=addr=>String(cell(addr)).trim();
+    // 작성일: 날짜 셀은 Date 객체이거나 문자열
     let docDate="";
     const dv=cell("D7");
     if(dv instanceof Date && !isNaN(dv)){ docDate=new Date(dv.getTime()-dv.getTimezoneOffset()*60000).toISOString().slice(0,10); }
     else if(str("D7")){ const s=str("D7").replace(/[.\/]/g,"-").replace(/\s/g,""); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) docDate=`${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; }
+    // 적요 10행 (C=설명, F=금액, M=비고)
     const items=[];
     for(let i=0;i<10;i++){ const desc=str("C"+(12+i)); const amtRaw=cell("F"+(12+i)); const note=str("M"+(12+i));
       const amount=+(String(amtRaw).replace(/[^0-9.\-]/g,""))||0;
       if(desc||amount) items.push({desc,amount,note}); }
+    // 증빙 O 표시
     const isO=v=>/^(o|O|ㅇ|v|V|✓|●|○|1|true)$/.test(String(v).trim());
     const src={
       docDate: docDate||new Date().toISOString().slice(0,10),
@@ -4626,12 +4660,14 @@ async function importExpenseXlsx(file){
     let imgCount=0, imgFail=0;
     try{
       const media=(wb.model&&wb.model.media)||[];
+      // imageId로 media를 안전하게 찾는다: 1)배열인덱스 2).index 속성 매칭 (수동 붙여넣기 대비)
       const findMedia=(imageId)=>{
         let m=media[imageId];
         if(m&&(m.buffer||m.base64)) return m;
         m=media.find(mm=>String(mm.index)===String(imageId));
         return (m&&(m.buffer||m.base64))?m:null;
       };
+      // media 항목 → File 로 변환 (브라우저/Node의 buffer·base64 타입 차이 모두 대응)
       const toFile=(m,name)=>{
         const ext=(m.extension||"png").replace("jpeg","jpg");
         const mime=ext==="jpg"?"image/jpeg":("image/"+ext);
@@ -4657,6 +4693,7 @@ async function importExpenseXlsx(file){
       }
     }catch(e){ console.warn("첨부 이미지 처리 실패:",e&&e.message); }
     const cnt=items.length;
+    // 작성 모달을 채워서 연다 (엑셀 프리필 = import 모드)
     openExpenseModal(src, "import");
     let msg=cnt?`엑셀에서 적요 ${cnt}건`:"엑셀 내용";
     if(imgCount) msg+=` · 첨부 이미지 ${imgCount}개`;
@@ -5093,7 +5130,7 @@ function openMeetingModal(){
   const attField = MEETING_ATT_OK
     ? `<label class="lab">참석자 <span class="hint">필수 · 계정 선택 (지정 시 인앱 알림 발송)</span></label>
        <div class="chips" id="mt_attwrap" style="margin-bottom:12px">${attUsers.map(u=>`<label class="chip"><input type="checkbox" value="${u.id}"><span>${esc(u.name)}</span></label>`).join("")||`<span class="hint">선택 가능한 계정이 없습니다.</span>`}</div>`
-    : `<label class="fld"><span class="lab">참석자 <span class="hint">필수 · 이름을 쉼표로 구분</span></span><input type="text" id="mt_att" placeholder="예) 형지수, 기획자, PD"></label>`;
+    : `<label class="fld"><span class="lab">참석자 <span class="hint">필수 · 이름을 쉼표로 구분</span></span><input type="text" id="mt_att" placeholder="예) 형지수, 최효선, 노현서"></label>`;
   Modal.open({title:"새 회의",okLabel:"생성",body:`
     ${MEETING_EXT_OK?`<label class="fld"><span class="lab">회의명 <span class="hint">필수</span></span><input type="text" id="mt_title" placeholder="예) 6월 마케팅 정기회의"></label>`:""}
     <label class="fld"><span class="lab">회의일자 <span class="hint">필수</span></span><input type="date" id="mt_date" value="${new Date().toISOString().slice(0,10)}"></label>
@@ -5204,10 +5241,10 @@ function navConfig(){
   base.push({view:"expenses",ic:"🧾",label:"지출결의서"});
   if(role!=="member") base.push({view:"stats",ic:"▤",label:"운영 통계"});
   base.push({view:"library",ic:"💬",label:"피드백 라이브러리"});
-  if(role==="manager") base.push({view:"notify",ic:"🔔",label:"알림 설정"});   // 뷰어 열람 제한
-  if(role==="manager") base.push({view:"access",ic:"🧾",label:"접속로그"});    // 뷰어 열람 제한
+  if(mgrLike) base.push({view:"notify",ic:"🔔",label:"알림 설정"});
+  if(mgrLike) base.push({view:"access",ic:"🧾",label:"접속로그"});
   if(role==="manager") base.push({view:"cleanup",ic:"🧹",label:"파일 정리"});
-  if(role==="manager") base.push({view:"brand",ic:"🏷",label:"브랜드 관리"});  // 뷰어 열람 제한
+  if(mgrLike) base.push({view:"brand",ic:"🏷",label:"브랜드 관리"});
   return base;
 }
 function renderSide(){
@@ -5237,13 +5274,6 @@ function render(){
   }
   renderBar(); renderSide();
   const v=session.route.view; let html="";
-  // 뷰어(모니터링) 계정 열람 제한 화면: 메뉴는 보이되 진입 시 안내 후 차단
-  const VIEWER_BLOCKED={ notify:"알림 설정", access:"접속로그", cleanup:"파일 정리", brand:"브랜드 관리", meetings:"회의", meeting:"회의" };
-  if(me().role==="viewer" && VIEWER_BLOCKED[v]){
-    document.getElementById("content").innerHTML=`<div class="ph"><div><div class="eb">TY LIFE</div><h2>${VIEWER_BLOCKED[v]}</h2></div></div>
-      <div class="card"><div class="card-b">${C.empty("🔒","열람 권한이 없습니다","모니터링 계정은 이 메뉴를 이용할 수 없습니다. 담당자에게 문의하세요.")}</div></div>`;
-    return;
-  }
   if(v==="dashboard") html=viewDashboard();
   else if(v==="tasks") html=viewTasks();
   else if(v==="gantt") html=viewGantt();
@@ -5377,12 +5407,9 @@ async function login(){
 async function afterAuth(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user){ return; }
-  // 이전 화면(캐시 잔상) 먼저 비우고 → shell 표시. 순서를 지켜 옛 내용이 번쩍이는 것 방지.
-  document.getElementById("content").innerHTML='<div class="empty"><div class="ic">⏳</div><p>데이터를 불러오는 중…</p></div>';
-  const sideEl=document.getElementById("side"); if(sideEl) sideEl.innerHTML="";
-  const whoEl=document.getElementById("who"); if(whoEl) whoEl.innerHTML="<b>—</b>";
   document.getElementById("login").style.display="none";
   document.getElementById("shell").style.display="block";
+  document.getElementById("content").innerHTML='<div class="empty"><div class="ic">⏳</div><p>데이터를 불러오는 중…</p></div>';
   try{ await Store.load(); }
   catch(e){ console.error(e); document.getElementById("content").innerHTML='<div class="empty"><div class="ic">⚠️</div><p>데이터를 불러오지 못했습니다.</p><p class="hint">'+esc((e&&e.message)||"")+'</p></div>'; return; }
   const profile=Store.user(user.id);
@@ -5407,11 +5434,11 @@ function notifBodyText(r){ if(r.type==="meeting_invited") return r.message||"회
   return (t?`[${t.title}] `:"")+(r.type==="approved"?"승인되었습니다":r.type==="rejected"?"반려되었습니다":(r.type==="review_requested"||r.type==="review_resubmitted")?"검토가 필요합니다":r.type==="comment_added"?"새 댓글이 있습니다":r.type==="post_created"?"새 글이 등록되었습니다":r.type==="task_created"?"새 업무가 등록되었습니다":"확인해 주세요"); }
 // ===== 인앱 알림센터 (권한 불필요) =====
 const InApp={
-  key(){ return "tylife_notifSeen:"+(me()?me().id:"x"); },
+  key(){ return "notifSeen:"+(me()?me().id:"x"); },
   lastSeen(){ try{ return +localStorage.getItem(this.key())||0; }catch(e){ return 0; } },
   markRead(){ try{ localStorage.setItem(this.key(), String(Date.now())); }catch(e){} updateNotifChrome(); },
-  soundOn(){ try{ return localStorage.getItem("tylife_notifSound")!=="0"; }catch(e){ return true; } },
-  setSound(v){ try{ localStorage.setItem("tylife_notifSound", v?"1":"0"); }catch(e){} },
+  soundOn(){ try{ return localStorage.getItem("notifSound")!=="0"; }catch(e){ return true; } },
+  setSound(v){ try{ localStorage.setItem("notifSound", v?"1":"0"); }catch(e){} },
   mine(){ return Store.notifsAll().filter(n=>n.recipientId===me().id && (n.channel==="email"||!n.channel)); }, // 이벤트당 1건
   unread(){ const ls=this.lastSeen(); return this.mine().filter(n=>n.sentAt>ls).length; },
   beep(){ if(!this.soundOn()) return; try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(); const now=c.currentTime;
@@ -5422,7 +5449,7 @@ const InApp={
 function updateNotifChrome(){
   const badge=document.getElementById("notifBadge"); const n=me()?InApp.unread():0;
   if(badge){ if(n>0){ badge.textContent=n>99?"99+":String(n); badge.style.display=""; } else badge.style.display="none"; }
-  try{ document.title=(n>0?`(${n}) `:"")+"TY LIFE 마케팅 플랫폼"; }catch(e){}
+  try{ document.title=(n>0?`(${n}) `:"")+"마케팅 운영 플랫폼"; }catch(e){}
 }
 function toggleNotifPanel(){ const p=document.getElementById("notifPanel"); if(!p) return;
   if(p.style.display==="none"){ renderNotifPanel(); p.style.display="block"; InApp.markRead(); }
@@ -5691,7 +5718,7 @@ Store.init();
   if(!window.supabase||!window.supabase.createClient){ err.textContent="Supabase 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침하세요."; err.classList.add("show"); return; }
   if(location.protocol==="file:"){ err.textContent="이 파일을 더블클릭(file://)으로 열면 로그인이 동작하지 않습니다. Vercel 배포 주소나 http://localhost 로 접속하세요."; err.classList.add("show"); return; }
   try{
-    sb=window.supabase.createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:"tylife-mkt-auth"}});
+    sb=window.supabase.createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
   }catch(e){ console.error(e); err.textContent="Supabase 초기화 실패: "+((e&&e.message)||e); err.classList.add("show"); return; }
   sb.auth.getSession().then(({data})=>{ if(data&&data.session){ afterAuth(); } else { document.getElementById("loginId").focus(); } })
     .catch(e=>{ console.error(e); document.getElementById("loginId").focus(); });
