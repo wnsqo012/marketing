@@ -3568,20 +3568,8 @@ function wireDocEditor(){
         if(sel && !cellCtx){
           e.preventDefault(); const wrap=sel.closest(".doc-embed")||sel; wrap.remove(); docRemoveImageTools(); scheduleDocSave();
         } else if(cellCtx){
-          const sel2=window.getSelection();
           const txt=(cellCtx.textContent||"").replace(/\u200b/g,"").trim();
-          // 1) 빈 셀이면 차단
-          if(txt===""){ e.preventDefault(); return; }
-          // 2) 셀 맨 앞 Backspace → 이전 개체와 병합 차단
-          if(e.key==="Backspace" && sel2 && sel2.isCollapsed){
-            const r=sel2.getRangeAt(0).cloneRange(); r.selectNodeContents(cellCtx); r.setEnd(sel2.anchorNode, sel2.anchorOffset);
-            if(r.toString().replace(/\u200b/g,"").length===0){ e.preventDefault(); return; }
-          }
-          // 3) 셀 맨 끝 Delete → 다음 개체와 병합 차단
-          if(e.key==="Delete" && sel2 && sel2.isCollapsed){
-            const r=sel2.getRangeAt(0).cloneRange(); r.selectNodeContents(cellCtx); r.setStart(sel2.anchorNode, sel2.anchorOffset);
-            if(r.toString().replace(/\u200b/g,"").length===0){ e.preventDefault(); return; }
-          }
+          if(txt===""){ e.preventDefault(); }
         }
       }
       // Tab: 들여쓰기 / Shift+Tab: 내어쓰기 (목록 안 목록 만들기)
