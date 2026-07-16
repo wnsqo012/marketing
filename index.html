@@ -3014,7 +3014,8 @@ async function collectFiles(){ // 복수 (산출물 등록용)
   const mode=asSrcMode();
   if(mode==="file"){ const files=asFiles.length?asFiles.slice():[...document.getElementById("as_file").files];
     if(!files.length) return [];
-    const out=[]; for(const f of files){ const r=await uploadOne(f); if(r) out.push(r); }
+    const out=[]; let failed=0; for(const f of files){ const r=await uploadOne(f); if(r) out.push(r); else failed++; }
+    if(!out.length && failed){ window.__lastCollectFailed=true; }
     return out;
   }
   if(mode==="text"){ const body=(val("as_body")||"").trim();
@@ -3027,8 +3028,13 @@ async function collectFiles(){ // 복수 (산출물 등록용)
 function openAssetModal(taskId){
   asFiles=[]; asFileUrls.forEach(u=>URL.revokeObjectURL(u)); asFileUrls=[];
   Modal.open({title:"산출물 등록",okLabel:"등록",body:assetFormBody(),submit:async()=>{
+    window.__lastCollectFailed=false;
     const atts=await collectFiles();
-    if(!atts.length){toast("파일·링크·텍스트 중 하나를 입력하세요");return false;}
+    if(!atts.length){
+      if(window.__lastCollectFailed){ toast("파일 업로드에 실패했습니다 · 관리자에게 저장소(버킷) 파일 형식 허용 설정을 확인 요청하세요"); }
+      else { toast("파일·링크·텍스트 중 하나를 입력하세요"); }
+      return false;
+    }
     const t=Store.task(taskId);
     const note=val("as_note").trim(), kw=val("as_kw").trim(), type=val("as_type");
     const phases=(type==="video"&&ASSET_PHASES_OK)?collectPhases():null;
@@ -4626,19 +4632,32 @@ async function importExpenseXlsx(file){
     // 각 첨부 시트(견적서·세금계산서·사업자등록증·통장사본)에 박힌 이미지를 추출 → Storage 업로드 → 첨부 URL로
     let imgCount=0, imgFail=0;
     try{
-      const media=(wb.model&&wb.model.media)||[];  // 워크북에 포함된 모든 이미지
-      const sheetKeyByName={}; Object.keys(EXP_SHEET_OF).forEach(k=>{ sheetKeyByName[EXP_SHEET_OF[k]]=k; });
+      const media=(wb.model&&wb.model.media)||[];
+      // imageId로 media를 안전하게 찾는다: 1)배열인덱스 2).index 속성 매칭 (수동 붙여넣기 대비)
+      const findMedia=(imageId)=>{
+        let m=media[imageId];
+        if(m&&(m.buffer||m.base64)) return m;
+        m=media.find(mm=>String(mm.index)===String(imageId));
+        return (m&&(m.buffer||m.base64))?m:null;
+      };
+      // media 항목 → File 로 변환 (브라우저/Node의 buffer·base64 타입 차이 모두 대응)
+      const toFile=(m,name)=>{
+        const ext=(m.extension||"png").replace("jpeg","jpg");
+        const mime=ext==="jpg"?"image/jpeg":("image/"+ext);
+        let bytes;
+        if(m.buffer){ bytes = m.buffer instanceof Uint8Array ? m.buffer : new Uint8Array(m.buffer); }
+        else if(m.base64){ const bin=atob(String(m.base64).replace(/^data:[^,]+,/,"")); bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i); }
+        else return null;
+        return new File([bytes],name+"."+ext,{type:mime});
+      };
       if(media.length){ toast("첨부 이미지 불러오는 중…"); }
       for(const k of Object.keys(EXP_SHEET_OF)){
         const sh=wb.getWorksheet(EXP_SHEET_OF[k]); if(!sh || !sh.getImages) continue;
         const imgs=sh.getImages()||[];
         for(const im of imgs){
           try{
-            const m=media[im.imageId]; if(!m||!m.buffer) continue;
-            const ext=(m.extension||"png").replace("jpeg","jpg");
-            const mime=ext==="jpg"?"image/jpeg":("image/"+ext);
-            const blob=new Blob([m.buffer],{type:mime});
-            const file=new File([blob],`${k}_${imgCount+1}.${ext}`,{type:mime});
+            const m=findMedia(im.imageId); if(!m) { imgFail++; continue; }
+            const file=toFile(m,`${k}_${imgCount+1}`); if(!file){ imgFail++; continue; }
             const r=await uploadOne(file);
             if(r&&r.fileData){ src.attachments[k].push(r.fileData); imgCount++; }
             else imgFail++;
