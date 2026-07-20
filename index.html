@@ -4662,7 +4662,7 @@ async function exportExpenseXlsx(id){
     await wb.xlsx.load(b64ToUint8(window.EXPENSE_TPL_B64).buffer);
     const ws=wb.getWorksheet("지출결의서"); if(!ws) throw new Error("템플릿 시트 없음");
     const set=(addr,v)=>{ try{ ws.getCell(addr).value=v; }catch(_){} };
-    if(e.docDate){ const p=e.docDate.split("-").map(Number); set("D7", new Date(p[0],p[1]-1,p[2])); }
+    if(e.docDate){ const p=e.docDate.split("-").map(Number); const c=ws.getCell("D7"); c.value=new Date(Date.UTC(p[0],p[1]-1,p[2])); c.numFmt="yyyy-mm-dd"; }
     set("D8", e.drafter||""); set("D9", e.dept||""); set("D10", e.reason||"");
     const items=(e.items||[]).slice(0,10);
     for(let i=0;i<10;i++){ const it=items[i];
@@ -4716,7 +4716,7 @@ async function importExpenseXlsx(file){
     // 작성일: 날짜 셀은 Date 객체이거나 문자열
     let docDate="";
     const dv=cell("D7");
-    if(dv instanceof Date && !isNaN(dv)){ docDate=new Date(dv.getTime()-dv.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+    if(dv instanceof Date && !isNaN(dv)){ docDate=`${dv.getUTCFullYear()}-${String(dv.getUTCMonth()+1).padStart(2,"0")}-${String(dv.getUTCDate()).padStart(2,"0")}`; }
     else if(str("D7")){ const s=str("D7").replace(/[.\/]/g,"-").replace(/\s/g,""); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) docDate=`${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; }
     // 적요 10행 (C=설명, F=금액, M=비고)
     const items=[];
