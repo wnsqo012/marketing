@@ -723,6 +723,11 @@
   .cchat-sec-t{font-weight:700;font-size:13.5px;color:var(--primary-ink);margin-bottom:5px}
   .cchat-sec-b{color:var(--ink)}
   .cchat-more{font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--fm)}
+  .cchat-extra{align-self:flex-start;max-width:88%;display:flex;flex-direction:column;gap:8px}
+  .cchat-morebtn{align-self:flex-start;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:16px;padding:6px 14px;font-size:12px;cursor:pointer;transition:.12s}
+  .cchat-morebtn:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft)}
+  .cchat-extra-body{display:flex;flex-direction:column;gap:8px}
+  .cchat-extra-item{opacity:.92}
   .cchat-hint{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--muted)}
   .cchat-chips{display:flex;flex-wrap:wrap;gap:7px;align-self:flex-start;max-width:90%}
   .cchat-chip{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:7px 13px;font-size:12px;cursor:pointer;color:var(--ink);transition:.12s}
@@ -2442,25 +2447,32 @@ function companyAnswer(query){
       '<span class="cchat-hint">예: “우리 그룹의 비전은?”, “계열사는 어떻게 나뉘나요?”, “2031년 목표”, “반드시 지켜야 할 원칙”</span>'+
       '</div></div>';
   }
-  var html='<div class="cchat-a">';
-  hits.forEach(function(s,i){
-    var raw=s.content||"";
-    var truncated=false;
+  // 첫 답변은 펼쳐서, 2·3위(관련 내용)는 접어서 "더보기"로 펼치게
+  var main=hits[0];
+  var extras=hits.slice(1);
+  var mkBody=function(s){
+    var raw=s.content||""; var truncated=false;
     if(raw.length>900){
-      // 900자 근처에서 문장 끝(. ! ? 다/요/음 뒤 공백)으로 자연스럽게 자르기
       var cut=raw.slice(0,900);
-      var m=cut.match(/[\s\S]*[.!?。](\s|$)/);           // 마지막 문장부호까지
-      if(!m) m=cut.match(/[\s\S]*(다|요|음|임)(\s|$)/);    // 한국어 종결어미까지
-      cut=m?m[0].trim():cut;
-      raw=cut; truncated=true;
+      var m=cut.match(/[\s\S]*[.!?。](\s|$)/);
+      if(!m) m=cut.match(/[\s\S]*(다|요|음|임)(\s|$)/);
+      cut=m?m[0].trim():cut; raw=cut; truncated=true;
     }
     var body=esc(raw);
     if(truncated) body+='<span class="cchat-hint"> … (요약 표시 · 전체 내용은 그룹 자료 참고)</span>';
-    html+='<div class="cchat-bubble bot">'+
-      (i===0?'':'<div class="cchat-more">관련 내용 더보기</div>')+
-      '<div class="cchat-sec-t">'+esc(s.title)+'</div>'+
-      '<div class="cchat-sec-b">'+body+'</div></div>';
-  });
+    return '<div class="cchat-sec-t">'+esc(s.title)+'</div><div class="cchat-sec-b">'+body+'</div>';
+  };
+  var html='<div class="cchat-a">';
+  // 대표 답변
+  html+='<div class="cchat-bubble bot">'+mkBody(main)+'</div>';
+  // 관련 내용(접힘): 버튼 + 숨겨진 영역
+  if(extras.length){
+    var inner=extras.map(function(s){ return '<div class="cchat-bubble bot cchat-extra-item">'+mkBody(s)+'</div>'; }).join("");
+    html+='<div class="cchat-extra">'+
+      '<button class="cchat-morebtn" data-act="company-more">관련 내용 '+extras.length+'개 더보기 ▾</button>'+
+      '<div class="cchat-extra-body" style="display:none">'+inner+'</div>'+
+    '</div>';
+  }
   html+='</div>';
   return html;
 }
@@ -2567,6 +2579,11 @@ const Actions={
   "new-task"(){ openTaskModal(); },
   "company-send"(){ const inp=document.getElementById("cchat_q"); if(inp){ companyHandleAsk(inp.value); inp.value=""; inp.focus(); } },
   "company-ask"(el){ companyHandleAsk(el.dataset.q||""); },
+  "company-more"(el){ const wrap=el.closest(".cchat-extra"); if(!wrap) return; const body=wrap.querySelector(".cchat-extra-body"); if(!body) return;
+    const open=body.style.display!=="none"; body.style.display=open?"none":"block";
+    el.textContent=el.textContent.replace(/[▾▴]/,open?"▾":"▴");
+    if(open) el.textContent=el.textContent.replace("접기","더보기"); else el.textContent=el.textContent.replace("더보기","접기");
+    const log=document.getElementById("cchat_log"); if(log&&!open) log.scrollTop=log.scrollHeight; },
   "dup-task"(el){ const t=Store.task(el.dataset.id); if(t) openTaskModal(t); },
 
   "ad-upload"(){ openAdUpload(); },
