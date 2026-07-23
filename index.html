@@ -492,6 +492,11 @@
     .cchat-chip{font-size:11.5px;padding:8px 12px}   /* 터치 영역 확보 */
     .cchat-inbar{padding:10px}
     .cchat-input{font-size:16px}                     /* iOS 확대 방지 */
+    /* --- 기획안 목록 필터 바: 모바일에서 세로로 --- */
+    .doc-filters{gap:7px}
+    .doc-filters .search{flex:1 1 100%;min-width:0}
+    .doc-fsel{flex:1 1 46%}
+    .doc-fchk{flex:1 1 46%;justify-content:center}
     /* --- 기획안 첨부 파일 카드 --- */
     .doc-file a{padding:11px 12px;gap:10px}
     .doc-file-name{font-size:13px}
@@ -685,6 +690,20 @@
   .doc-file-name{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .doc-file-meta{font-size:11px;color:var(--muted);font-family:var(--fm)}
   .doc-file-dl{font-size:11.5px;color:var(--primary);font-weight:600;flex-shrink:0;border:1px solid var(--primary);border-radius:6px;padding:4px 10px}
+  /* 기획안 목록 필터·정렬 바 */
+  .doc-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+  .doc-filters .search{flex:1;min-width:180px}
+  .doc-fsel{border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px;background:var(--surface);color:var(--ink);font-family:inherit;cursor:pointer}
+  .doc-fchk{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink);cursor:pointer;user-select:none;border:1px solid var(--line);border-radius:9px;padding:7px 11px;background:var(--surface)}
+  .doc-fchk input{cursor:pointer;margin:0}
+  .doc-count{font-size:11.5px;color:var(--muted);margin-bottom:12px;font-family:var(--fm)}
+  /* 브랜드별 그룹 */
+  .doc-group{margin-bottom:18px}
+  .doc-group-h{font-size:13.5px;font-weight:700;color:var(--primary-ink);padding:6px 2px 10px;border-bottom:1px solid var(--line);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .doc-group-c{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:2px 8px;font-family:var(--fm)}
+  /* 완료 업무의 기획안: 흐리게 표시 (구분) */
+  .doc-card-done{opacity:.62}
+  .doc-card-done:hover{opacity:1}
   /* 대시보드 개인 메모 슬롯 */
   .memo-slot .card-h .hint{margin-left:8px}
   .memo-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
@@ -1848,7 +1867,7 @@ const Modal=(()=>{
 /* =====================================================================
    7. SESSION
 ===================================================================== */
-let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false,dateFrom:"",dateTo:""},collapsedBrands:{},taskGroupBy:"brand",adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
+let session={user:null,route:{view:"dashboard"},filters:{q:"",status:"",brand:"",prio:"",hideExecuted:false,dateFrom:"",dateTo:""},docFilters:{brand:"",sort:"recent",hideDone:false,mineOnly:false,groupByBrand:false},collapsedBrands:{},taskGroupBy:"brand",adFilters:{platform:"",from:"",to:"",campaign:"",metric:"spend"},logFilters:{user:"",kind:""},contentPeriod:"",calMonth:"",gantt:{range:"month",anchor:null,group:"brand"},mgantt:{range:"month",anchor:null,group:"none"}};
 const me=()=>session.user;
 
 /* =====================================================================
@@ -3550,27 +3569,85 @@ function viewDocs(){
   if(!DOCS_OK) return `${ph("기획안","기획 문서를 작성·공유합니다.")}
     <div class="card"><div class="card-b">${C.empty("📄","기능 준비 필요","supabase_docs.sql 을 Supabase에서 실행한 뒤 새로고침하세요.")}</div></div>`;
   const q=(session.docQuery||"").trim().toLowerCase();
+  const F=session.docFilters||(session.docFilters={brand:"",sort:"recent",hideDone:false,mineOnly:false,groupByBrand:false});
   let list=Store.docsAll();
+  // 검색어
   if(q) list=list.filter(d=>{ const bn=(Store.brand(d.brandId)?.name||"").toLowerCase();
     return (d.title||"").toLowerCase().includes(q)||(d.tags||"").toLowerCase().includes(q)||bn.includes(q)||stripHtml(d.body).toLowerCase().includes(q); });
+  // 브랜드 필터
+  if(F.brand) list=list.filter(d=> F.brand==="__none__" ? !d.brandId : d.brandId===F.brand);
+  // 내 기획안만
+  if(F.mineOnly) list=list.filter(d=>d.authorId===me().id);
+  // 완료 업무의 기획안 제외 (연결 업무가 완료/집행완료 상태면 숨김)
+  if(F.hideDone) list=list.filter(d=>{ if(!d.taskId) return true; const t=Store.task(d.taskId); if(!t) return true;
+    return !(t.status==="done"||t.status==="executed"||t.status==="published"); });
+  // 정렬
+  const brandName=id=>(Store.brand(id)?.name||"~~~");   // 브랜드 없음은 뒤로
+  if(F.sort==="recent") list=list.slice().sort((a,b)=>b.updatedAt-a.updatedAt);
+  else if(F.sort==="old") list=list.slice().sort((a,b)=>a.updatedAt-b.updatedAt);
+  else if(F.sort==="brand") list=list.slice().sort((a,b)=>brandName(a.brandId).localeCompare(brandName(b.brandId))||b.updatedAt-a.updatedAt);
+  else if(F.sort==="title") list=list.slice().sort((a,b)=>(a.title||"").localeCompare(b.title||""));
   const right=canWrite?`<button class="btn btn-primary btn-sm" data-act="doc-new">＋ 새 기획안</button>`:"";
-  const cards=list.length?`<div class="doc-grid">${list.map(d=>{
+
+  const brands=Store.db.brands.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const totalAll=Store.docsAll().length;
+  // 필터 바
+  const filterBar=`
+    <div class="doc-filters">
+      <input class="search" id="doc_q" type="text" placeholder="🔍 제목·내용·브랜드·태그 검색" value="${esc(session.docQuery||"")}">
+      <select id="doc_f_brand" class="doc-fsel">
+        <option value="">전체 브랜드</option>
+        ${brands.map(b=>`<option value="${b.id}" ${F.brand===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}
+        <option value="__none__" ${F.brand==="__none__"?"selected":""}>(브랜드 없음)</option>
+      </select>
+      <select id="doc_f_sort" class="doc-fsel">
+        <option value="recent" ${F.sort==="recent"?"selected":""}>최신순</option>
+        <option value="old" ${F.sort==="old"?"selected":""}>오래된순</option>
+        <option value="brand" ${F.sort==="brand"?"selected":""}>브랜드순</option>
+        <option value="title" ${F.sort==="title"?"selected":""}>제목순</option>
+      </select>
+      <label class="doc-fchk"><input type="checkbox" id="doc_f_group" ${F.groupByBrand?"checked":""}> 브랜드별 묶기</label>
+      <label class="doc-fchk"><input type="checkbox" id="doc_f_hidedone" ${F.hideDone?"checked":""}> 완료 업무 제외</label>
+      <label class="doc-fchk"><input type="checkbox" id="doc_f_mine" ${F.mineOnly?"checked":""}> 내 기획안만</label>
+    </div>
+    <div class="doc-count">${list.length}개 표시${list.length!==totalAll?` · 전체 ${totalAll}개`:""}</div>`;
+
+  const cardHtml=d=>{
     const b=Store.brand(d.brandId), au=Store.user(d.authorId), preview=stripHtml(d.body).slice(0,110);
     const linkedTask=d.taskId?Store.task(d.taskId):null;
-    return `<div class="doc-card" data-act="doc-open" data-id="${d.id}">
+    const done=linkedTask&&(linkedTask.status==="done"||linkedTask.status==="executed"||linkedTask.status==="published");
+    return `<div class="doc-card${done?" doc-card-done":""}" data-act="doc-open" data-id="${d.id}">
       <div class="doc-card-t">${docEscHtml(d.title||"제목 없는 문서")}</div>
       <div class="doc-card-p">${docEscHtml(preview)||"<span style='color:var(--faint)'>내용 없음</span>"}</div>
       <div class="doc-card-m">
         ${b?`<span class="tag">${esc(b.name)}</span>`:""}
-        ${linkedTask?`<span class="tag" style="border-color:var(--primary);color:var(--primary)">🔗 업무</span>`:""}
+        ${linkedTask?`<span class="tag" style="border-color:var(--primary);color:var(--primary)">🔗 업무${done?" ✓완료":""}</span>`:""}
         ${d.tags?d.tags.split(",").filter(Boolean).slice(0,2).map(tg=>`<span class="doc-tag">#${esc(tg.trim())}</span>`).join(""):""}
         <span class="doc-card-meta">${au?esc(au.name)+" · ":""}${fmtDay(d.updatedAt)}</span>
       </div>
     </div>`;
-  }).join("")}</div>`
-    : C.empty("📄", q?"검색 결과가 없습니다":"아직 기획안이 없습니다", q?"다른 검색어를 시도해 보세요.":"‘＋ 새 기획안’으로 첫 문서를 작성하세요.");
+  };
+
+  let cards;
+  if(!list.length){
+    cards=C.empty("📄", q||F.brand||F.mineOnly||F.hideDone?"조건에 맞는 기획안이 없습니다":"아직 기획안이 없습니다", q||F.brand||F.mineOnly||F.hideDone?"필터를 조정해 보세요.":"‘＋ 새 기획안’으로 첫 문서를 작성하세요.");
+  } else if(F.groupByBrand){
+    // 브랜드별 그룹 헤더로 묶어 표시
+    const groups={};
+    list.forEach(d=>{ const key=d.brandId||"__none__"; (groups[key]=groups[key]||[]).push(d); });
+    const keys=Object.keys(groups).sort((a,b)=>{ if(a==="__none__")return 1; if(b==="__none__")return -1; return brandName(a).localeCompare(brandName(b)); });
+    cards=keys.map(k=>{
+      const name=k==="__none__"?"브랜드 없음":(Store.brand(k)?.name||"기타");
+      return `<div class="doc-group">
+        <div class="doc-group-h">${esc(name)} <span class="doc-group-c">${groups[k].length}</span></div>
+        <div class="doc-grid">${groups[k].map(cardHtml).join("")}</div>
+      </div>`;
+    }).join("");
+  } else {
+    cards=`<div class="doc-grid">${list.map(cardHtml).join("")}</div>`;
+  }
   return `${ph("기획안","기획 문서를 작성하고 팀과 공유합니다. 서식·표·체크리스트·이미지를 지원합니다.",right)}
-    <div class="toolbar"><input class="search" id="doc_q" type="text" placeholder="🔍 제목·내용·브랜드·태그 검색" value="${esc(session.docQuery||"")}"></div>
+    ${filterBar}
     ${cards}`;
 }
 function stripHtml(html){ const t=document.createElement("div"); t.innerHTML=html||""; return (t.textContent||t.innerText||"").replace(/\s+/g," ").trim(); }
@@ -5526,7 +5603,15 @@ function render(){
   if(v==="content"){ const ps=document.getElementById("c_period"); if(ps) ps.onchange=()=>{ session.contentPeriod=ps.value; render(); }; }
   if(v==="blog") wireBlogStudio();
   if(v==="doc") wireDocEditor();
-  if(v==="docs"){ const dq=document.getElementById("doc_q"); if(dq){ dq.oninput=()=>{ session.docQuery=dq.value; clearTimeout(window.__docSearchT); window.__docSearchT=setTimeout(render,250); }; } }
+  if(v==="docs"){
+    const dq=document.getElementById("doc_q"); if(dq){ dq.oninput=()=>{ session.docQuery=dq.value; clearTimeout(window.__docSearchT); window.__docSearchT=setTimeout(render,250); }; }
+    const F=session.docFilters;
+    const fb=document.getElementById("doc_f_brand"); if(fb) fb.onchange=()=>{ F.brand=fb.value; render(); };
+    const fs=document.getElementById("doc_f_sort"); if(fs) fs.onchange=()=>{ F.sort=fs.value; render(); };
+    const fg=document.getElementById("doc_f_group"); if(fg) fg.onchange=()=>{ F.groupByBrand=fg.checked; render(); };
+    const fh=document.getElementById("doc_f_hidedone"); if(fh) fh.onchange=()=>{ F.hideDone=fh.checked; render(); };
+    const fm=document.getElementById("doc_f_mine"); if(fm) fm.onchange=()=>{ F.mineOnly=fm.checked; render(); };
+  }
   if(v==="expenses"){ const imp=document.getElementById("exp_import"); if(imp){ imp.onchange=()=>{ const f=imp.files[0]; if(f) importExpenseXlsx(f); imp.value=""; }; } }
   if(v==="company"){ const inp=document.getElementById("cchat_q"); if(inp){ inp.onkeydown=(e)=>{ if(e.key==="Enter"){ e.preventDefault(); companyHandleAsk(inp.value); inp.value=""; } }; inp.focus(); } }
   // 필터 입력 연결 (업무 뷰)
