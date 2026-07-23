@@ -2425,8 +2425,18 @@ function companyAnswer(query){
   }
   var html='<div class="cchat-a">';
   hits.forEach(function(s,i){
-    var body=esc(s.content);
-    if(body.length>600) body=body.slice(0,600)+"…";
+    var raw=s.content||"";
+    var truncated=false;
+    if(raw.length>900){
+      // 900자 근처에서 문장 끝(. ! ? 다/요/음 뒤 공백)으로 자연스럽게 자르기
+      var cut=raw.slice(0,900);
+      var m=cut.match(/[\s\S]*[.!?。](\s|$)/);           // 마지막 문장부호까지
+      if(!m) m=cut.match(/[\s\S]*(다|요|음|임)(\s|$)/);    // 한국어 종결어미까지
+      cut=m?m[0].trim():cut;
+      raw=cut; truncated=true;
+    }
+    var body=esc(raw);
+    if(truncated) body+='<span class="cchat-hint"> … (요약 표시 · 전체 내용은 그룹 자료 참고)</span>';
     html+='<div class="cchat-bubble bot">'+
       (i===0?'':'<div class="cchat-more">관련 내용 더보기</div>')+
       '<div class="cchat-sec-t">'+esc(s.title)+'</div>'+
