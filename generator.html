@@ -674,6 +674,22 @@ canvas { display:block; width:100%; height:auto; border-radius:10px; box-shadow:
       <label style=&quot;margin-top:12px;&quot;>사진 진하기 <span class=&quot;val&quot; id=&quot;op-val&quot;>28%</span></label>
       <input type=&quot;range&quot; id=&quot;inp-opacity&quot; min=&quot;10&quot; max=&quot;60&quot; step=&quot;1&quot; value=&quot;28&quot;>
       <button class=&quot;btn-clear&quot; id=&quot;btn-clear-photo&quot; type=&quot;button&quot;>업로드 사진 제거</button>
+      <div id=&quot;photo-adjust&quot; style=&quot;display:none; margin-top:14px; padding-top:12px; border-top:1px dashed #eee;&quot;>
+        <label style=&quot;margin-top:0;&quot;>사진 크기 <span class=&quot;val&quot; id=&quot;sc-val&quot;>100%</span></label>
+        <input type=&quot;range&quot; id=&quot;inp-scale&quot; min=&quot;30&quot; max=&quot;250&quot; step=&quot;1&quot; value=&quot;100&quot;>
+        <div class=&quot;row&quot;>
+          <div class=&quot;field&quot;>
+            <label>가로 위치 <span class=&quot;val&quot; id=&quot;px-val&quot;>0</span></label>
+            <input type=&quot;range&quot; id=&quot;inp-posx&quot; min=&quot;-100&quot; max=&quot;100&quot; step=&quot;1&quot; value=&quot;0&quot;>
+          </div>
+          <div class=&quot;field&quot;>
+            <label>세로 위치 <span class=&quot;val&quot; id=&quot;py-val&quot;>0</span></label>
+            <input type=&quot;range&quot; id=&quot;inp-posy&quot; min=&quot;-100&quot; max=&quot;100&quot; step=&quot;1&quot; value=&quot;0&quot;>
+          </div>
+        </div>
+        <div class=&quot;hint&quot; style=&quot;margin-top:8px;&quot;>미리보기 화면을 드래그하면 사진 위치를 바로 옮길 수 있어요.</div>
+        <button class=&quot;btn-clear&quot; id=&quot;btn-reset-photo&quot; type=&quot;button&quot; style=&quot;margin-top:10px;&quot;>크기·위치 초기화</button>
+      </div>
     </div>
 
     <div class=&quot;btns&quot;>
@@ -716,6 +732,14 @@ const inpRank = document.getElementById('inp-rank');
 const photoBox = document.getElementById('photo-box');
 const inpPhoto = document.getElementById('inp-photo');
 const inpOpacity = document.getElementById('inp-opacity');
+const photoAdjust = document.getElementById('photo-adjust');
+const inpScale = document.getElementById('inp-scale');
+const inpPosX = document.getElementById('inp-posx');
+const inpPosY = document.getElementById('inp-posy');
+const scVal = document.getElementById('sc-val');
+const pxVal = document.getElementById('px-val');
+const pyVal = document.getElementById('py-val');
+const btnResetPhoto = document.getElementById('btn-reset-photo');
 const opVal = document.getElementById('op-val');
 const photoStatus = document.getElementById('photo-status');
 const btnClearPhoto = document.getElementById('btn-clear-photo');
@@ -764,7 +788,11 @@ function currentPhoto(rank){
 }
 function drawPhoto(img){
   const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
-  const scale=SIZE/ih, w=iw*scale, h=SIZE, x=(SIZE-w)/2, y=0;
+  const sc=(parseInt(inpScale.value,10)||100)/100;
+  const scale=SIZE/ih*sc, w=iw*scale, h=ih*scale;
+  const ox=((parseInt(inpPosX.value,10)||0)/100)*(SIZE/2);
+  const oy=((parseInt(inpPosY.value,10)||0)/100)*(SIZE/2);
+  const x=(SIZE-w)/2+ox, y=(SIZE-h)/2+oy;
   const op=(parseInt(inpOpacity.value,10)||28)/100;
   ctx.save(); ctx.globalAlpha=op; ctx.drawImage(img,x,y,w,h); ctx.restore();
 }
@@ -780,6 +808,11 @@ function render(){
   const spacing = parseInt(inpSp.value,10);
   spVal.textContent = spacing<=6?'좁게':spacing>=28?'넓게':'표준';
   if(opVal) opVal.textContent=inpOpacity.value+'%';
+  scVal.textContent=inpScale.value+'%'; pxVal.textContent=inpPosX.value; pyVal.textContent=inpPosY.value;
+  const adjustOn = !!userPhoto &amp;&amp; rank!=='리더';
+  photoAdjust.style.display = adjustOn ? 'block' : 'none';
+  cv.style.cursor = adjustOn ? 'grab' : 'default';
+  cv.style.touchAction = adjustOn ? 'none' : 'auto';
   drawGold(rank, POS_CY, POS_FONT, 6);
   const name=(inpName.value||'').trim();
   if(name) drawGold(name, CY, BASE_FONT, spacing);
@@ -794,6 +827,29 @@ function syncUploadUI(){ photoBox.style.display = (inpRank.value==='리더') ? '
 inpRank.addEventListener('change', syncUploadUI);
 inpOpacity.addEventListener('input', render);
 btnClearPhoto.addEventListener('click', ()=>{ userPhoto=null; inpPhoto.value=''; setStatus('업로드한 사진을 제거했어요.', false); render(); });
+[inpScale, inpPosX, inpPosY].forEach(el=>el.addEventListener('input', render));
+function resetAdjust(){ inpScale.value=100; inpPosX.value=0; inpPosY.value=0; }
+btnResetPhoto.addEventListener('click', ()=>{ resetAdjust(); render(); });
+inpPhoto.addEventListener('change', resetAdjust);
+
+let dragging=false, dragStart=null;
+cv.addEventListener('pointerdown', e=>{
+  if(!userPhoto || inpRank.value==='리더') return;
+  dragging=true; cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing';
+  dragStart={x:e.clientX, y:e.clientY, px:parseInt(inpPosX.value,10)||0, py:parseInt(inpPosY.value,10)||0};
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging || !dragStart) return;
+  const r=cv.getBoundingClientRect();
+  const toPct = d => d * (SIZE/r.width) / (SIZE/2) * 100;
+  inpPosX.value = Math.max(-100, Math.min(100, Math.round(dragStart.px + toPct(e.clientX-dragStart.x))));
+  inpPosY.value = Math.max(-100, Math.min(100, Math.round(dragStart.py + toPct(e.clientY-dragStart.y))));
+  render();
+});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev, e=>{
+  if(!dragging) return; dragging=false; dragStart=null;
+  cv.style.cursor = (userPhoto &amp;&amp; inpRank.value!=='리더') ? 'grab' : 'default';
+}));
 
 function setStatus(msg, busy){ photoStatus.textContent=msg; photoStatus.classList.toggle('busy', !!busy); }
 function loadImage(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
