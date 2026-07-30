@@ -758,6 +758,19 @@
   .cchat-inbar{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--surface)}
   .cchat-input{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none}
   .cchat-input:focus{border-color:var(--primary)}
+  /* 제작 시작 전 피드백 인지 배너 */
+  .fbd-box{border:1px solid var(--primary);background:var(--primary-soft);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .fbd-h{font-weight:700;font-size:13.5px;color:var(--primary-ink);margin-bottom:10px}
+  .fbd-b{display:flex;flex-direction:column;gap:9px}
+  .fbd-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+  .fbd-lbl{font-size:12px;color:var(--ink-soft);min-width:96px;padding-top:3px;font-weight:600}
+  .fbd-chips{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+  .fbd-chip{background:var(--surface);border:1px solid var(--primary);color:var(--primary-ink);border-radius:14px;padding:3px 11px;font-size:12px;font-weight:600}
+  .fbd-chip b{font-weight:800;font-family:var(--fm)}
+  .fbd-recent{display:flex;flex-direction:column;gap:5px;margin-top:2px;border-top:1px dashed var(--primary);padding-top:9px}
+  .fbd-r{font-size:12.3px;color:var(--ink);line-height:1.5}
+  .fbd-rcat{color:var(--primary);font-weight:600}
+  .fbd-foot{font-size:11px;color:var(--ink-soft);margin-top:10px;font-family:var(--fm)}
 </style>
 </head>
 <body>
@@ -2244,6 +2257,34 @@ function taskRangeNote(list){
   </div>`;
 }
 
+// 담당자가 과거 받은 팀장 피드백을 분석해 '제작 시작 전 인지용' 요약을 만든다
+function ownerFeedbackDigest(ownerId, excludeTaskId){
+  // 이 담당자가 소유(또는 공동담당)한 업무들의 팀장 리뷰 수집
+  const tasks=Store.db.tasks.filter(t=>t.id!==excludeTaskId && (t.ownerId===ownerId || Store.membersOf(t.id).some(m=>m.userId===ownerId)));
+  const revs=[];
+  tasks.forEach(t=>{ Store.reviewsOf(t.id).forEach(r=>{ if(r.role==="manager" && (r.comment||r.detail||r.cat)) revs.push(r); }); });
+  if(!revs.length) return null;
+  // 1) 카테고리 빈도
+  const catCount={};
+  revs.forEach(r=>{ if(r.cat){ catCount[r.cat]=(catCount[r.cat]||0)+1; } });
+  const topCats=Object.keys(catCount).sort((a,b)=>catCount[b]-catCount[a]).slice(0,5).map(c=>({cat:c,n:catCount[c]}));
+  // 2) 코멘트/사유에서 자주 나오는 키워드 (오탈자·톤 등)
+  const text=revs.map(r=>((r.comment||"")+" "+(r.detail||"")).toLowerCase()).join(" ");
+  const KEYWORDS=[
+    {k:"오탈자",re:/오탈자|오타|맞춤법|띄어쓰기|맞춤/},
+    {k:"톤·어조",re:/톤|어조|말투|문체|존댓|반말/},
+    {k:"브랜드 가이드",re:/브랜드|가이드|로고|컬러|색상|폰트|서체/},
+    {k:"수치·팩트 확인",re:/수치|숫자|가격|금액|날짜|팩트|사실|정보 확인|정확/},
+    {k:"CTA·문구",re:/cta|문구|카피|후킹|제목|헤드/},
+    {k:"이미지·해상도",re:/이미지|해상도|화질|사이즈|규격|비율|잘림/},
+    {k:"레이아웃·정렬",re:/레이아웃|정렬|여백|간격|배치|가독/},
+    {k:"법무·표현주의",re:/법무|과장|허위|규정|심의|가이드라인|표현 주의|주의 표현/},
+  ];
+  const kwHits=KEYWORDS.filter(o=>o.re.test(text)).map(o=>o.k);
+  // 3) 최근 코멘트 3개(짧게)
+  const recent=revs.slice(0,3).map(r=>{ const txt=(r.comment||r.detail||"").trim(); return {cat:r.cat||"", txt: txt.length>70?txt.slice(0,70)+"…":txt, decision:r.decision}; }).filter(x=>x.txt);
+  return { total:revs.length, topCats, kwHits, recent };
+}
 function viewTask(id){
   const t=Store.task(id); if(!t) return C.empty("❓","업무를 찾을 수 없습니다","");
   const b=Store.brand(t.brandId),cmp=Store.campaign(t.campaignId),o=Store.user(t.ownerId);
@@ -2393,7 +2434,22 @@ function actionPanel(t,role,lastReject){
   let html="";
   if(role==="viewer"){ return `<div class="hint">👁 읽기 전용(모니터링) 계정입니다. 현재 상태: <b>${STATUS[s].label}</b> · 조회만 가능합니다.</div>`; }
   if(role==="member"&&isWorker){
-    if(s==="planning") html+=btn("제작 시작 →","advance","btn-primary",t.id);
+    if(s==="planning"){
+      // 제작 시작 전 — 이 담당자가 과거 받은 팀장 피드백을 인지시켜 반복 지적을 예방
+      const dg=ownerFeedbackDigest(t.ownerId, t.id);
+      if(dg){
+        let items="";
+        if(dg.kwHits.length) items+=`<div class="fbd-row"><span class="fbd-lbl">자주 지적된 부분</span><span class="fbd-chips">${dg.kwHits.map(k=>`<span class="fbd-chip">${esc(k)}</span>`).join("")}</span></div>`;
+        if(dg.topCats.length) items+=`<div class="fbd-row"><span class="fbd-lbl">피드백 카테고리</span><span class="fbd-chips">${dg.topCats.map(c=>`<span class="fbd-chip">${esc(c.cat)} <b>${c.n}</b></span>`).join("")}</span></div>`;
+        if(dg.recent.length) items+=`<div class="fbd-recent">${dg.recent.map(r=>`<div class="fbd-r">${r.cat?`<span class="fbd-rcat">[${esc(r.cat)}]</span> `:""}${esc(r.txt)}</div>`).join("")}</div>`;
+        html+=`<div class="fbd-box">
+          <div class="fbd-h">💡 제작 시작 전 체크 — 이전에 자주 받은 피드백이에요</div>
+          <div class="fbd-b">${items}</div>
+          <div class="fbd-foot">지난 검토 ${dg.total}건에서 뽑았어요. 시작 전에 한 번 훑어보면 재작업을 줄일 수 있어요.</div>
+        </div>`;
+      }
+      html+=btn("제작 시작 →","advance","btn-primary",t.id);
+    }
     else if(s==="producing"){ if(allDone&&multi) html+=completionBlock(t); html+=reviewBtn("팀장 검토 요청 →","submit-review"); }
     else if(s==="revision"){
       if(lastReject) html+=`<div class="callout"><b>반려됨</b> [${esc(lastReject.cat||'')}] ${esc(lastReject.detail||'')}</div>`;
