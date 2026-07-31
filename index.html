@@ -2285,6 +2285,28 @@ function ownerFeedbackDigest(ownerId, excludeTaskId){
   const recent=revs.slice(0,3).map(r=>{ const txt=(r.comment||r.detail||"").trim(); return {cat:r.cat||"", txt: txt.length>70?txt.slice(0,70)+"…":txt, decision:r.decision}; }).filter(x=>x.txt);
   return { total:revs.length, topCats, kwHits, recent };
 }
+// 피드백 인지 배너 HTML (담당자 관점/팀장 관점 문구 구분)
+function feedbackDigestBanner(t, viewerRole){
+  const dg=ownerFeedbackDigest(t.ownerId, t.id);
+  if(!dg) return "";
+  const forManager = viewerRole==="manager"||viewerRole==="executive";
+  const ownerName = Store.user(t.ownerId)?.name || "담당자";
+  let items="";
+  if(dg.kwHits.length) items+=`<div class="fbd-row"><span class="fbd-lbl">자주 지적된 부분</span><span class="fbd-chips">${dg.kwHits.map(k=>`<span class="fbd-chip">${esc(k)}</span>`).join("")}</span></div>`;
+  if(dg.topCats.length) items+=`<div class="fbd-row"><span class="fbd-lbl">피드백 카테고리</span><span class="fbd-chips">${dg.topCats.map(c=>`<span class="fbd-chip">${esc(c.cat)} <b>${c.n}</b></span>`).join("")}</span></div>`;
+  if(dg.recent.length) items+=`<div class="fbd-recent">${dg.recent.map(r=>`<div class="fbd-r">${r.cat?`<span class="fbd-rcat">[${esc(r.cat)}]</span> `:""}${esc(r.txt)}</div>`).join("")}</div>`;
+  const head = forManager
+    ? `💡 <b>${esc(ownerName)}</b> 담당자가 자주 받은 피드백 — 제작 시작 전 참고`
+    : `💡 제작 시작 전 체크 — 이전에 자주 받은 피드백이에요`;
+  const foot = forManager
+    ? `지난 검토 ${dg.total}건 기준. 시작 전에 짚어주면 재작업을 줄일 수 있어요.`
+    : `지난 검토 ${dg.total}건에서 뽑았어요. 시작 전에 한 번 훑어보면 재작업을 줄일 수 있어요.`;
+  return `<div class="fbd-box">
+    <div class="fbd-h">${head}</div>
+    <div class="fbd-b">${items}</div>
+    <div class="fbd-foot">${foot}</div>
+  </div>`;
+}
 function viewTask(id){
   const t=Store.task(id); if(!t) return C.empty("❓","업무를 찾을 수 없습니다","");
   const b=Store.brand(t.brandId),cmp=Store.campaign(t.campaignId),o=Store.user(t.ownerId);
@@ -2433,21 +2455,12 @@ function actionPanel(t,role,lastReject){
   const reviewBtn=(label,act)=> allDone?btn(label,act,"btn-primary",t.id):`<div>${completionBlock(t)}<button class="btn btn-primary" style="width:100%;opacity:.5;cursor:not-allowed" disabled>${label} (공동 담당자 전원 완료 필요)</button></div>`;
   let html="";
   if(role==="viewer"){ return `<div class="hint">👁 읽기 전용(모니터링) 계정입니다. 현재 상태: <b>${STATUS[s].label}</b> · 조회만 가능합니다.</div>`; }
+  // 제작 시작 전(기획 상태) 피드백 인지 배너 — 담당 팀원 + 팀장/대표 모두에게 노출
+  if(s==="planning" && ((role==="member"&&isWorker) || role==="manager" || role==="executive")){
+    html+=feedbackDigestBanner(t, role);
+  }
   if(role==="member"&&isWorker){
     if(s==="planning"){
-      // 제작 시작 전 — 이 담당자가 과거 받은 팀장 피드백을 인지시켜 반복 지적을 예방
-      const dg=ownerFeedbackDigest(t.ownerId, t.id);
-      if(dg){
-        let items="";
-        if(dg.kwHits.length) items+=`<div class="fbd-row"><span class="fbd-lbl">자주 지적된 부분</span><span class="fbd-chips">${dg.kwHits.map(k=>`<span class="fbd-chip">${esc(k)}</span>`).join("")}</span></div>`;
-        if(dg.topCats.length) items+=`<div class="fbd-row"><span class="fbd-lbl">피드백 카테고리</span><span class="fbd-chips">${dg.topCats.map(c=>`<span class="fbd-chip">${esc(c.cat)} <b>${c.n}</b></span>`).join("")}</span></div>`;
-        if(dg.recent.length) items+=`<div class="fbd-recent">${dg.recent.map(r=>`<div class="fbd-r">${r.cat?`<span class="fbd-rcat">[${esc(r.cat)}]</span> `:""}${esc(r.txt)}</div>`).join("")}</div>`;
-        html+=`<div class="fbd-box">
-          <div class="fbd-h">💡 제작 시작 전 체크 — 이전에 자주 받은 피드백이에요</div>
-          <div class="fbd-b">${items}</div>
-          <div class="fbd-foot">지난 검토 ${dg.total}건에서 뽑았어요. 시작 전에 한 번 훑어보면 재작업을 줄일 수 있어요.</div>
-        </div>`;
-      }
       html+=btn("제작 시작 →","advance","btn-primary",t.id);
     }
     else if(s==="producing"){ if(allDone&&multi) html+=completionBlock(t); html+=reviewBtn("팀장 검토 요청 →","submit-review"); }
