@@ -773,6 +773,16 @@
   .fbd-r{font-size:12.3px;color:var(--ink);line-height:1.5}
   .fbd-rcat{color:var(--primary);font-weight:600}
   .fbd-foot{font-size:11px;color:var(--ink-soft);margin-top:10px;font-family:var(--fm)}
+  /* 활동 타임라인 소요시간 */
+  .tt-box{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .tt-total{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink)}
+  .tt-total b{font-size:15px;color:var(--primary-ink);font-family:var(--fm)}
+  .tt-phases{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:6px}
+  .tt-prow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px}
+  .tt-plab{color:var(--ink-soft);flex:1}
+  .tt-arrow{color:var(--muted)}
+  .tt-pdur{color:var(--primary-ink);font-weight:600;font-family:var(--fm);white-space:nowrap}
+  .tl-gap{display:inline-block;margin-left:6px;font-size:10.5px;color:var(--primary);background:var(--primary-soft);border-radius:8px;padding:1px 7px;font-family:var(--fm)}
 </style>
 </head>
 <body>
@@ -2342,6 +2352,37 @@ function feedbackDigestBanner(t, viewerRole){
     <div class="fbd-foot">${foot}</div>
   </div>`;
 }
+// 소요시간 포맷 (최소 단위 5분, 5분 미만은 '5분 미만')
+function fmtDuration(ms){
+  if(ms==null||ms<0) return "";
+  let min=Math.round(ms/60000/5)*5;   // 5분 단위 반올림
+  if(min<5) return "5분 미만";
+  const day=Math.floor(min/1440); min-=day*1440;
+  const hr=Math.floor(min/60); min-=hr*60;
+  const parts=[];
+  if(day) parts.push(day+"일");
+  if(hr) parts.push(hr+"시간");
+  if(min) parts.push(min+"분");
+  return parts.join(" ")||"5분 미만";
+}
+// 업무 활동 로그로 단계별·전체 소요시간 계산
+function taskTimeStats(acts){
+  // 오래된 → 최신 순으로
+  const seq=acts.slice().sort((a,b)=>a.ts-b.ts);
+  if(seq.length<2) return null;
+  const totalMs=seq[seq.length-1].ts-seq[0].ts;
+  // 상태 변경(type==="status") 지점들을 구간 경계로 삼아 단계별 소요 계산
+  const statusPts=seq.filter(a=>a.type==="status");
+  const phases=[];
+  // 첫 활동(업무 생성)부터 첫 상태변경까지, 그리고 각 상태변경 사이
+  let prev=seq[0];
+  const boundaries=[seq[0], ...statusPts.filter(a=>a!==seq[0])];
+  for(let i=1;i<boundaries.length;i++){
+    const from=boundaries[i-1], to=boundaries[i];
+    phases.push({ label:(from.message||"시작")+" → "+(to.message||""), fromMsg:from.message||"시작", toMsg:to.message||"", ms:to.ts-from.ts, at:to.ts });
+  }
+  return { totalMs, phases };
+}
 function viewTask(id){
   const t=Store.task(id); if(!t) return C.empty("❓","업무를 찾을 수 없습니다","");
   const b=Store.brand(t.brandId),cmp=Store.campaign(t.campaignId),o=Store.user(t.ownerId);
@@ -2413,7 +2454,25 @@ function viewTask(id){
 
       <!-- 활동 타임라인 -->
       <div class="card"><div class="card-h"><h3>활동 타임라인</h3></div>
-        <div class="card-b"><div class="tl">${acts.map(a=>`<div class="tl-i"><div class="t">${fmtDate(a.ts)} · ${esc(Store.user(a.actorId)?.name||'')}</div>${esc(a.message)}</div>`).join("")||`<div class="hint">이력 없음</div>`}</div></div></div>
+        <div class="card-b">${(()=>{
+          const stats=taskTimeStats(acts);
+          let summary="";
+          if(stats){
+            const phaseRows=stats.phases.filter(p=>p.ms>0).map(p=>`<div class="tt-prow"><span class="tt-plab">${esc(p.fromMsg)} <span class="tt-arrow">→</span> ${esc(p.toMsg)}</span><span class="tt-pdur">${fmtDuration(p.ms)}</span></div>`).join("");
+            summary=`<div class="tt-box">
+              <div class="tt-total"><span>총 소요시간</span><b>${fmtDuration(stats.totalMs)}</b></div>
+              ${phaseRows?`<div class="tt-phases">${phaseRows}</div>`:""}
+            </div>`;
+          }
+          // 최신순 정렬 + 각 항목에 이전(더 과거) 활동으로부터 걸린 시간
+          const ordered=acts.slice().sort((a,b)=>b.ts-a.ts);
+          const rows=ordered.map((a,i)=>{
+            const prev=ordered[i+1];   // 바로 이전(더 과거) 활동
+            const gap=prev?a.ts-prev.ts:null;
+            return `<div class="tl-i"><div class="t">${fmtDate(a.ts)} · ${esc(Store.user(a.actorId)?.name||'')}${gap!=null?` <span class="tl-gap">+${fmtDuration(gap)}</span>`:""}</div>${esc(a.message)}</div>`;
+          }).join("")||`<div class="hint">이력 없음</div>`;
+          return summary+`<div class="tl">${rows}</div>`;
+        })()}</div></div>
     </div>
   </div>`;
 }
