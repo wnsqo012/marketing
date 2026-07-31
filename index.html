@@ -768,6 +768,8 @@
   .fbd-chip{background:var(--surface);border:1px solid var(--primary);color:var(--primary-ink);border-radius:14px;padding:3px 11px;font-size:12px;font-weight:600}
   .fbd-chip b{font-weight:800;font-family:var(--fm)}
   .fbd-recent{display:flex;flex-direction:column;gap:5px;margin-top:2px;border-top:1px dashed var(--primary);padding-top:9px}
+  .fbd-recent-h{font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:2px}
+  .fbd-rn{display:inline-block;background:var(--primary);color:#fff;border-radius:9px;padding:0 6px;font-size:10.5px;font-weight:800;font-family:var(--fm)}
   .fbd-r{font-size:12.3px;color:var(--ink);line-height:1.5}
   .fbd-rcat{color:var(--primary);font-weight:600}
   .fbd-foot{font-size:11px;color:var(--ink-soft);margin-top:10px;font-family:var(--fm)}
@@ -2268,8 +2270,7 @@ function ownerFeedbackDigest(ownerId, excludeTaskId){
   const catCount={};
   revs.forEach(r=>{ if(r.cat){ catCount[r.cat]=(catCount[r.cat]||0)+1; } });
   const topCats=Object.keys(catCount).sort((a,b)=>catCount[b]-catCount[a]).slice(0,5).map(c=>({cat:c,n:catCount[c]}));
-  // 2) 코멘트/사유에서 자주 나오는 키워드 (오탈자·톤 등)
-  const text=revs.map(r=>((r.comment||"")+" "+(r.detail||"")).toLowerCase()).join(" ");
+  // 2) 코멘트/사유에서 반복되는 지적 키워드 — 각 리뷰마다 카운트(빈도)
   const KEYWORDS=[
     {k:"오탈자",re:/오탈자|오타|맞춤법|띄어쓰기|맞춤/},
     {k:"톤·어조",re:/톤|어조|말투|문체|존댓|반말/},
@@ -2280,10 +2281,44 @@ function ownerFeedbackDigest(ownerId, excludeTaskId){
     {k:"레이아웃·정렬",re:/레이아웃|정렬|여백|간격|배치|가독/},
     {k:"법무·표현주의",re:/법무|과장|허위|규정|심의|가이드라인|표현 주의|주의 표현/},
   ];
-  const kwHits=KEYWORDS.filter(o=>o.re.test(text)).map(o=>o.k);
-  // 3) 최근 코멘트 3개(짧게)
-  const recent=revs.slice(0,3).map(r=>{ const txt=(r.comment||r.detail||"").trim(); return {cat:r.cat||"", txt: txt.length>70?txt.slice(0,70)+"…":txt, decision:r.decision}; }).filter(x=>x.txt);
-  return { total:revs.length, topCats, kwHits, recent };
+  // 칭찬·일회성 판별 (이런 문구는 '지적'이 아니므로 제외)
+  const PRAISE=/좋아요|좋아|좋은|잘 |잘하|훌륭|괜찮|굿|멋지|최고|👍|🙏|👏|감사|수고|고생|완벽|👌|나이스|깔끔|센스/;
+  // 각 리뷰를 문장 단위로 훑어 반복 지적 카운트
+  const kwCount={};
+  revs.forEach(r=>{
+    const isReject = r.decision==="rejected";
+    const body=((r.comment||"")+" "+(r.detail||""));
+    KEYWORDS.forEach(o=>{
+      // 반려 리뷰는 그대로, 승인 리뷰는 칭찬성 문구가 아닐 때만 지적으로 인정
+      if(o.re.test(body.toLowerCase())){
+        if(isReject || !PRAISE.test(body)){
+          kwCount[o.k]=(kwCount[o.k]||0)+1;
+        }
+      }
+    });
+  });
+  const kwHits=Object.keys(kwCount).sort((a,b)=>kwCount[b]-kwCount[a]);      // 빈도순 정렬
+  const kwRanked=kwHits.map(k=>({k, n:kwCount[k]}));
+  // 3) 반복되는 지적 문장 — 반려 사유 위주, 칭찬·일회성 제외, 유사 문구 묶어 빈도순
+  const issueMap={};   // 정규화된 문구 → {txt, n, cat}
+  revs.forEach(r=>{
+    const raw=(r.detail||r.comment||"").trim();
+    if(!raw) return;
+    // 칭찬만 있는 코멘트는 제외 (승인+칭찬)
+    if(r.decision!=="rejected" && PRAISE.test(raw) && raw.length<40) return;
+    // 문장 분리 후 각 문장 검토
+    raw.split(/[.!?\n·]|(?<=다)\s|(?<=요)\s/).forEach(seg=>{
+      const s=seg.trim();
+      if(s.length<4) return;
+      if(PRAISE.test(s) && s.length<30 && !/(주의|필요|확인|해주|바랍|반드시|수정|누락|틀|오|잘못)/.test(s)) return; // 순수 칭찬 제외
+      const norm=s.replace(/\s+/g,"").replace(/[0-9]+/g,"").toLowerCase();  // 숫자·공백 제거해 유사 문구 통합
+      const key=norm.slice(0,16);   // 앞부분으로 유사 판정
+      if(!issueMap[key]) issueMap[key]={txt:s.length>60?s.slice(0,60)+"…":s, n:0, cat:r.cat||""};
+      issueMap[key].n++;
+    });
+  });
+  const recurring=Object.values(issueMap).sort((a,b)=>b.n-a.n).slice(0,4);
+  return { total:revs.length, topCats, kwHits:kwHits.slice(0,6), kwRanked, recurring };
 }
 // 피드백 인지 배너 HTML (담당자 관점/팀장 관점 문구 구분)
 function feedbackDigestBanner(t, viewerRole){
@@ -2292,9 +2327,9 @@ function feedbackDigestBanner(t, viewerRole){
   const forManager = viewerRole==="manager"||viewerRole==="executive";
   const ownerName = Store.user(t.ownerId)?.name || "담당자";
   let items="";
-  if(dg.kwHits.length) items+=`<div class="fbd-row"><span class="fbd-lbl">자주 지적된 부분</span><span class="fbd-chips">${dg.kwHits.map(k=>`<span class="fbd-chip">${esc(k)}</span>`).join("")}</span></div>`;
+  if(dg.kwRanked && dg.kwRanked.length) items+=`<div class="fbd-row"><span class="fbd-lbl">자주 지적된 부분</span><span class="fbd-chips">${dg.kwRanked.slice(0,6).map(o=>`<span class="fbd-chip">${esc(o.k)}${o.n>1?` <b>${o.n}</b>`:""}</span>`).join("")}</span></div>`;
   if(dg.topCats.length) items+=`<div class="fbd-row"><span class="fbd-lbl">피드백 카테고리</span><span class="fbd-chips">${dg.topCats.map(c=>`<span class="fbd-chip">${esc(c.cat)} <b>${c.n}</b></span>`).join("")}</span></div>`;
-  if(dg.recent.length) items+=`<div class="fbd-recent">${dg.recent.map(r=>`<div class="fbd-r">${r.cat?`<span class="fbd-rcat">[${esc(r.cat)}]</span> `:""}${esc(r.txt)}</div>`).join("")}</div>`;
+  if(dg.recurring && dg.recurring.length) items+=`<div class="fbd-recent"><div class="fbd-recent-h">반복되는 지적 (자주 나온 순)</div>${dg.recurring.map(r=>`<div class="fbd-r">${r.n>1?`<span class="fbd-rn">×${r.n}</span> `:""}${r.cat?`<span class="fbd-rcat">[${esc(r.cat)}]</span> `:""}${esc(r.txt)}</div>`).join("")}</div>`;
   const head = forManager
     ? `💡 <b>${esc(ownerName)}</b> 담당자가 자주 받은 피드백 — 제작 시작 전 참고`
     : `💡 제작 시작 전 체크 — 이전에 자주 받은 피드백이에요`;
@@ -2321,6 +2356,8 @@ function viewTask(id){
     <div class="right">${C.dday(t)} ${C.prio(t.priority)}${(role==="manager"||(role==="member"&&t.ownerId===me().id))?` <button class="btn btn-ghost btn-sm" data-act="edit-priority" data-id="${t.id}" style="padding:2px 8px;font-size:11px;vertical-align:middle">우선순위 변경</button>`:""} ${C.badge(t.status)}</div></div>
 
   <div class="card" style="margin-bottom:18px"><div class="card-b">${C.rail(t.status)}</div></div>
+
+  ${(t.status==="planning" && ((role==="member"&&Store.isWorker(t.id,me().id)) || role==="manager" || role==="executive")) ? feedbackDigestBanner(t, role) : ""}
 
   <div class="split">
     <div>
@@ -2455,10 +2492,6 @@ function actionPanel(t,role,lastReject){
   const reviewBtn=(label,act)=> allDone?btn(label,act,"btn-primary",t.id):`<div>${completionBlock(t)}<button class="btn btn-primary" style="width:100%;opacity:.5;cursor:not-allowed" disabled>${label} (공동 담당자 전원 완료 필요)</button></div>`;
   let html="";
   if(role==="viewer"){ return `<div class="hint">👁 읽기 전용(모니터링) 계정입니다. 현재 상태: <b>${STATUS[s].label}</b> · 조회만 가능합니다.</div>`; }
-  // 제작 시작 전(기획 상태) 피드백 인지 배너 — 담당 팀원 + 팀장/대표 모두에게 노출
-  if(s==="planning" && ((role==="member"&&isWorker) || role==="manager" || role==="executive")){
-    html+=feedbackDigestBanner(t, role);
-  }
   if(role==="member"&&isWorker){
     if(s==="planning"){
       html+=btn("제작 시작 →","advance","btn-primary",t.id);
